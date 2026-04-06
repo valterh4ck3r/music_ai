@@ -13,3 +13,7 @@ val TealDark = Color(0xFF004D5C)
 val TealLight = Color(0xFF00B4D8)
 val OnDarkText = Color(0xFFE0E0E0)
 val OnDarkTextSecondary = Color(0xFF9E9E9E)
+
+// Connectivity state colors
+val OfflineGrey = Color(0xFF616161)
+val OnlineGreen = Color(0xFF388E3C)
