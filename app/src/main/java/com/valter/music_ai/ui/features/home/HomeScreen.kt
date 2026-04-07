@@ -45,6 +45,7 @@ import com.valter.music_ai.ui.features.home.components.SongListItem
 import com.valter.music_ai.ui.theme.DarkBackground
 import com.valter.music_ai.ui.theme.Teal
 import com.valter.music_ai.ui.features.home.components.PullToRefreshLayout
+import com.valter.music_ai.ui.features.home.components.SongListItemShimmer
 import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.ui.features.home.model.HomeUiData
 
@@ -185,20 +186,10 @@ fun HomeScreen(
                 }
             }
 
-            // Loading state
-            if (isLoading) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(200.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator(
-                            color = Teal,
-                            modifier = Modifier.size(48.dp)
-                        )
-                    }
+            // Loading or Refreshing state
+            if (isLoading || uiState.isRefreshing) {
+                items(10) {
+                    SongListItemShimmer()
                 }
             } else {
                 // Song list with pagination
@@ -217,18 +208,8 @@ fun HomeScreen(
 
                 // Loading more indicator
                 if (uiState.isLoadingMore) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(
-                                color = Teal,
-                                modifier = Modifier.size(32.dp)
-                            )
-                        }
+                    items(3) {
+                        SongListItemShimmer()
                     }
                 }
 

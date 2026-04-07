@@ -19,8 +19,8 @@ class MainViewModel @Inject constructor() : ViewModel() {
 
     init {
         viewModelScope.launch {
-            // Delay handles the 2 seconds splash screen
-            delay(1000)
+            // Delay handles the 500 ms seconds splash screen
+            delay(500)
             _showSplash.value = false
         }
     }

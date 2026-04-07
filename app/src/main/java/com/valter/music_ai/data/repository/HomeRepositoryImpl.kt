@@ -54,8 +54,6 @@ class HomeRepositoryImpl @Inject constructor(
             // Step 3: Cache the results
             songDao.insertAll(songs.toEntityList())
 
-            delay(5000)
-
             emit(ResponseState.Success(songs))
         } catch (e: HttpException) {
             emit(ResponseState.Error(statusCode = e.code(), message = e.message ?: "Unknown HttpException"))

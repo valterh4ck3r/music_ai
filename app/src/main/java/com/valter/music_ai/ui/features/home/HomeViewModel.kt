@@ -31,19 +31,17 @@ class HomeViewModel @Inject constructor(
 
     val isConnected = connectivityObserver.isConnected
 
-    private val _uiState = MutableStateFlow<HomeUiState>(ResponseState.Loading)
-    val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow<ResponseState<HomeUiData>>(ResponseState.Loading)
+    val uiState: StateFlow<ResponseState<HomeUiData>> = _uiState.asStateFlow()
 
-    private fun currentData(): HomeUiData {
-        return (_uiState.value as? ResponseState.Success)?.data ?: HomeUiData()
-    }
+    private var uiData = HomeUiData()
 
     private var currentOffset = 0
     private var searchJob: Job? = null
 
     companion object {
         private const val PAGE_SIZE = 20
-        private const val SEARCH_DEBOUNCE_MS = 500L
+        private const val SEARCH_DEBOUNCE_MS = 800L
         private const val DEFAULT_SEARCH_TERM = "pop"
     }
 
@@ -53,8 +51,10 @@ class HomeViewModel @Inject constructor(
     }
 
     fun onSearchQueryChanged(query: String) {
-        val current = currentData()
-        _uiState.update { ResponseState.Success(current.copy(searchQuery = query)) }
+        uiData = uiData.copy(searchQuery = query)
+        if (_uiState.value is ResponseState.Success) {
+            _uiState.value = ResponseState.Success(uiData)
+        }
 
         // Debounce search
         searchJob?.cancel()
@@ -69,12 +69,14 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadNextPage() {
-        val current = currentData()
-        if (current.isLoadingMore || !current.canLoadMore) return
+        if (uiData.isLoadingMore || !uiData.canLoadMore) return
 
-        _uiState.update { ResponseState.Success(current.copy(isLoadingMore = true)) }
+        uiData = uiData.copy(isLoadingMore = true)
+        if (_uiState.value is ResponseState.Success) {
+            _uiState.value = ResponseState.Success(uiData)
+        }
 
-        val query = current.searchQuery.ifBlank { DEFAULT_SEARCH_TERM }
+        val query = uiData.searchQuery.ifBlank { DEFAULT_SEARCH_TERM }
 
         viewModelScope.launch {
             repository.searchSongs(query, PAGE_SIZE, currentOffset)
@@ -84,28 +86,18 @@ class HomeViewModel @Inject constructor(
                         is ResponseState.Success -> {
                             val newSongs = state.data.toUiList()
                             currentOffset += newSongs.size
-                            _uiState.update {
-                                val latest = currentData()
-                                ResponseState.Success(
-                                    latest.copy(
-                                        songs = latest.songs + newSongs,
-                                        isLoadingMore = false,
-                                        canLoadMore = newSongs.size >= PAGE_SIZE
-                                    )
-                                )
-                            }
+                            uiData = uiData.copy(
+                                songs = uiData.songs + newSongs,
+                                isLoadingMore = false,
+                                canLoadMore = newSongs.size >= PAGE_SIZE
+                            )
+                            _uiState.value = ResponseState.Success(uiData)
                         }
                         is ResponseState.Error -> {
-                            _uiState.update {
-                                val latest = currentData()
-                                ResponseState.Success(
-                                    // Keep old items, but clear loading state.
-                                    latest.copy(isLoadingMore = false)
-                                )
-                            }
-                            // Usually you might show a toast, but this sets overall error if we transition.
-                            // If we set the whole screen to ResponseState.Error, we lose data.
-                            // So let's emit ResponseState.Error to trigger Error visual on the screen.
+                            uiData = uiData.copy(isLoadingMore = false)
+                            // We still want to maintain the existing items if they exist
+                            // so usually we'd keep Success state to keep showing songs, or transition to Error.
+                            // Emitting Error here will blank out screen. Let's just emit Error as requested.
                             _uiState.value = ResponseState.Error(statusCode = state.statusCode, message = state.message)
                         }
                         is ResponseState.Loading -> {
@@ -127,8 +119,7 @@ class HomeViewModel @Inject constructor(
     }
 
     fun clearError() {
-        val current = currentData()
-        _uiState.value = ResponseState.Success(current)
+        _uiState.value = ResponseState.Success(uiData)
     }
 
     fun refreshSongs() {
@@ -147,8 +138,10 @@ class HomeViewModel @Inject constructor(
             val query = randomTerms.random()
             
             // Update the search query state so the UI reflects what is currently being shown
-            val current = currentData()
-            _uiState.value = ResponseState.Success(current.copy(searchQuery = query))
+            uiData = uiData.copy(searchQuery = query)
+            if (_uiState.value is ResponseState.Success) {
+                _uiState.value = ResponseState.Success(uiData)
+            }
 
             searchSongs(query, isRefresh = true)
         }
@@ -157,10 +150,12 @@ class HomeViewModel @Inject constructor(
     private fun searchSongs(term: String, isRefresh: Boolean = false) {
         currentOffset = 0
         if (isRefresh) {
-            val current = currentData()
-            _uiState.value = ResponseState.Success(current.copy(isRefreshing = true, canLoadMore = true))
+            uiData = uiData.copy(isRefreshing = true, canLoadMore = true)
+            if (_uiState.value is ResponseState.Success) {
+                _uiState.value = ResponseState.Success(uiData)
+            }
         } else {
-            val current = currentData()
+            uiData = uiData.copy(songs = emptyList(), canLoadMore = true)
             _uiState.value = ResponseState.Loading
         }
 
@@ -172,16 +167,12 @@ class HomeViewModel @Inject constructor(
                         is ResponseState.Success -> {
                             val newSongs = state.data.toUiList()
                             currentOffset = newSongs.size
-                            _uiState.update { 
-                                val current = currentData()
-                                ResponseState.Success(
-                                    current.copy(
-                                        songs = newSongs,
-                                        isRefreshing = false,
-                                        canLoadMore = newSongs.size >= PAGE_SIZE
-                                    )
-                                )
-                            }
+                            uiData = uiData.copy(
+                                songs = newSongs,
+                                isRefreshing = false,
+                                canLoadMore = newSongs.size >= PAGE_SIZE
+                            )
+                            _uiState.value = ResponseState.Success(uiData)
                         }
                         is ResponseState.Error -> {
                             _uiState.value = ResponseState.Error(statusCode = state.statusCode, message = state.message)
@@ -201,9 +192,9 @@ class HomeViewModel @Inject constructor(
             repository.getRecentlyPlayedSongs()
                 .catch { /* silently fail, recently played is optional */ }
                 .collect { songs ->
-                    val current = currentData()
-                    if (_uiState.value !is ResponseState.Error) {
-                        _uiState.value = ResponseState.Success(current.copy(recentlyPlayed = songs.toUiList()))
+                    uiData = uiData.copy(recentlyPlayed = songs.toUiList())
+                    if (_uiState.value is ResponseState.Success) {
+                        _uiState.value = ResponseState.Success(uiData)
                     }
                 }
         }
