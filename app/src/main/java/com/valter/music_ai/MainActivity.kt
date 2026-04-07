@@ -26,7 +26,7 @@ import androidx.navigation.compose.rememberNavController
 import com.valter.music_ai.data.connectivity.AndroidNetworkConnectivityObserver
 import com.valter.music_ai.ui.core.connectivity.ConnectivityBanner
 import com.valter.music_ai.ui.core.connectivity.ConnectivityViewModel
-import com.valter.music_ai.ui.core.utils.AppNavigation
+import com.valter.music_ai.ui.navigation.AppNavigation
 import com.valter.music_ai.ui.theme.Music_aiTheme
 
 class MainActivity : ComponentActivity() {

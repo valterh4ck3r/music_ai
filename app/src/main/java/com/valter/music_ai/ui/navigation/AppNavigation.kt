@@ -1,4 +1,4 @@
-package com.valter.music_ai.ui.core.utils
+package com.valter.music_ai.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
