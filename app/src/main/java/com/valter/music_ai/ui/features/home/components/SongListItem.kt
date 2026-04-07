@@ -14,9 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.filled.MusicNote
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -38,7 +37,6 @@ import coil.request.ImageRequest
 import com.valentinilk.shimmer.shimmer
 import com.valter.music_ai.ui.theme.Music_aiTheme
 import com.valter.music_ai.ui.theme.OnDarkTextSecondary
-import com.valter.music_ai.ui.theme.Teal
 
 @Composable
 fun SongListItem(

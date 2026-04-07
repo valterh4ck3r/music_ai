@@ -3,19 +3,15 @@ package com.valter.music_ai.data.repository
 import com.valter.music_ai.data.local.dao.SongDao
 import com.valter.music_ai.data.local.mapper.SongEntityMapper.toDomainList
 import com.valter.music_ai.data.local.mapper.SongEntityMapper.toEntity
-import com.valter.music_ai.data.local.mapper.SongEntityMapper.toEntityList
 import com.valter.music_ai.data.remote.api.ITunesApiService
 import com.valter.music_ai.data.remote.mapper.SongDtoMapper.toDomainList
+import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
-import com.valter.music_ai.domain.model.ResponseState
-import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
-import retrofit2.HttpException
 import kotlinx.coroutines.flow.map
-
+import retrofit2.HttpException
 import javax.inject.Inject
 
 class HomeRepositoryImpl @Inject constructor(

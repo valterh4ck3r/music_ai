@@ -1,8 +1,6 @@
 package com.valter.music_ai.ui.core.connectivity
 
 import androidx.compose.animation.AnimatedVisibility
-import com.valter.music_ai.ui.theme.OfflineGrey
-import com.valter.music_ai.ui.theme.OnlineGreen
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
@@ -17,6 +15,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.valter.music_ai.ui.theme.OfflineGrey
+import com.valter.music_ai.ui.theme.OnlineGreen
 
 
 @Composable

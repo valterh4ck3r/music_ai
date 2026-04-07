@@ -5,20 +5,19 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
+import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
+import com.valter.music_ai.domain.repository.HomeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-
-import com.valter.music_ai.domain.repository.HomeRepository
-import com.valter.music_ai.domain.model.ResponseState
-import kotlinx.coroutines.flow.catch
 
 data class SongUiState(
     val song: Song? = null,

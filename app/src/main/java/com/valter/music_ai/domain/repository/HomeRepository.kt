@@ -1,7 +1,7 @@
 package com.valter.music_ai.domain.repository
 
-import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.model.ResponseState
+import com.valter.music_ai.domain.model.Song
 import kotlinx.coroutines.flow.Flow
 
 interface HomeRepository {

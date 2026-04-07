@@ -2,16 +2,16 @@ package com.valter.music_ai.ui.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.hilt.navigation.compose.hiltViewModel
+import com.valter.music_ai.ui.features.album.AlbumScreen
+import com.valter.music_ai.ui.features.album.AlbumViewModel
 import com.valter.music_ai.ui.features.home.HomeScreen
 import com.valter.music_ai.ui.features.home.HomeViewModel
 import com.valter.music_ai.ui.features.song.SongScreen
 import com.valter.music_ai.ui.features.song.SongViewModel
-import com.valter.music_ai.ui.features.album.AlbumScreen
-import com.valter.music_ai.ui.features.album.AlbumViewModel
 import com.valter.music_ai.ui.features.splash.SplashScreen
 
 @Composable
