@@ -22,12 +22,15 @@ import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
-import com.valter.music_ai.di.ServiceLocator
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.valter.music_ai.ui.core.connectivity.ConnectivityBanner
 import com.valter.music_ai.ui.core.connectivity.ConnectivityViewModel
 import com.valter.music_ai.ui.navigation.AppNavigation
 import com.valter.music_ai.ui.theme.Music_aiTheme
 
+import dagger.hilt.android.AndroidEntryPoint
+
+@AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -36,9 +39,6 @@ class MainActivity : ComponentActivity() {
 
         // Continue with regular onCreate
         super.onCreate(savedInstanceState)
-
-        // Initialize dependency injector
-        ServiceLocator.init(this)
 
         // Set up edge-to-edge display
         enableEdgeToEdge()
@@ -49,12 +49,8 @@ class MainActivity : ComponentActivity() {
                 val showSplash by mainViewModel.showSplash.collectAsState(initial = true)
                 val navController = rememberNavController()
 
-                // Connectivity setup via ServiceLocator
-                val connectivityViewModel: ConnectivityViewModel = viewModel(
-                    factory = ConnectivityViewModel.Factory(
-                        ServiceLocator.networkConnectivityObserver
-                    )
-                )
+                // Connectivity setup via Hilt
+                val connectivityViewModel: ConnectivityViewModel = hiltViewModel()
                 val connectivityStatus by connectivityViewModel.status.collectAsState()
 
                 LaunchedEffect(showSplash) {

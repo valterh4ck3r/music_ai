@@ -12,7 +12,9 @@ import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
-class HomeRepositoryImpl(
+import javax.inject.Inject
+
+class HomeRepositoryImpl @Inject constructor(
     private val apiService: ITunesApiService,
     private val songDao: SongDao
 ) : HomeRepository {

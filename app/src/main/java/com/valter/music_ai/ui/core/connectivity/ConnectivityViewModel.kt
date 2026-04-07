@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
 enum class ConnectivityStatus {
     CONNECTED,    // Just reconnected — shows green banner for 3s then hides
@@ -17,7 +19,8 @@ enum class ConnectivityStatus {
 }
 
 
-class ConnectivityViewModel(
+@HiltViewModel
+class ConnectivityViewModel @Inject constructor(
     private val observer: NetworkConnectivityObserver
 ) : ViewModel() {
 
@@ -51,12 +54,4 @@ class ConnectivityViewModel(
         }
     }
 
-    class Factory(
-        private val observer: NetworkConnectivityObserver
-    ) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return ConnectivityViewModel(observer) as T
-        }
-    }
 }

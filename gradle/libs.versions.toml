@@ -9,16 +9,18 @@ lifecycleRuntimeKtx = "2.10.0"
 activityCompose = "1.13.0"
 composeBom = "2026.03.01"
 splashScreen = "1.2.0"
-navigationCompose = "2.8.0"
-lifecycleViewmodelCompose = "2.8.0"
-retrofit = "2.11.0"
-gsonConverter = "2.11.0"
-room = "2.6.1"
+navigationCompose = "2.9.7"
+lifecycleViewmodelCompose = "2.10.0"
+retrofit = "3.0.0"
+gsonConverter = "3.0.0"
+room = "2.8.4"
 ksp = "2.0.21-1.0.27"
-coroutinesTest = "1.8.1"
-mockk = "1.13.12"
-turbine = "1.1.0"
+coroutinesTest = "1.10.2"
+mockk = "1.14.9"
+turbine = "1.2.1"
 coil = "2.7.0"
+hilt = "2.51.1"
+hiltNavigationCompose = "1.2.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -57,8 +59,14 @@ turbine = { group = "app.cash.turbine", name = "turbine", version.ref = "turbine
 # Image Loading
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
+# Hilt
+hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
+hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+hilt-android = { id = "com.google.dagger.hilt.android", version.ref = "hilt" }

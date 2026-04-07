@@ -1,5 +1,6 @@
 package com.valter.music_ai.ui.features.home
 
+import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
 import io.mockk.coEvery
@@ -49,14 +50,21 @@ class HomeViewModelTest {
         )
     )
 
+    private lateinit var observer: NetworkConnectivityObserver
+
     @Before
     fun setup() {
         Dispatchers.setMain(testDispatcher)
         repository = mockk(relaxed = true)
+        observer = mockk(relaxed = true)
 
         coEvery {
             repository.searchSongs(any(), any(), any())
         } returns flowOf(Result.success(testSongs))
+
+        coEvery {
+            observer.isConnected
+        } returns flowOf(true)
 
         coEvery {
             repository.getRecentlyPlayedSongs()
@@ -69,7 +77,7 @@ class HomeViewModelTest {
     }
 
     private fun createViewModel(): HomeViewModel {
-        return HomeViewModel(repository)
+        return HomeViewModel(repository, observer)
     }
 
     @Test

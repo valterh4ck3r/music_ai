@@ -44,7 +44,6 @@ import com.valter.music_ai.ui.features.home.components.SearchBar
 import com.valter.music_ai.ui.features.home.components.SongListItem
 import com.valter.music_ai.ui.theme.DarkBackground
 import com.valter.music_ai.ui.theme.Teal
-import com.valter.music_ai.di.ServiceLocator
 import com.valter.music_ai.ui.features.home.components.PullToRefreshLayout
 
 data class SongUi(
@@ -60,7 +59,7 @@ fun HomeScreen(
     viewModel: HomeViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isConnected by ServiceLocator.networkConnectivityObserver.isConnected.collectAsState(initial = true)
+    val isConnected by viewModel.isConnected.collectAsState(initial = true)
     val listState = rememberLazyListState()
     
     var isSearchVisible by remember { mutableStateOf(false) }

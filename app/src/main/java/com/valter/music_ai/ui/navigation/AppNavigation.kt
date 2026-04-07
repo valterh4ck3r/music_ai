@@ -7,7 +7,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.valter.music_ai.SplashScreen
-import com.valter.music_ai.di.ServiceLocator
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.valter.music_ai.ui.features.home.HomeScreen
 import com.valter.music_ai.ui.features.home.HomeViewModel
 
@@ -25,9 +25,7 @@ fun AppNavigation(
             SplashScreen()
         }
         composable("home") {
-            val homeViewModel: HomeViewModel = viewModel(
-                factory = HomeViewModel.Factory(ServiceLocator.homeRepository)
-            )
+            val homeViewModel: HomeViewModel = hiltViewModel()
             HomeScreen(viewModel = homeViewModel)
         }
     }

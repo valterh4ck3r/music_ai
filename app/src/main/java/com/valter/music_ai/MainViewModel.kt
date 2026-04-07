@@ -8,7 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
-class MainViewModel : ViewModel() {
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+
+@HiltViewModel
+class MainViewModel @Inject constructor() : ViewModel() {
 
     private val _showSplash = MutableStateFlow(true)
     val showSplash: StateFlow<Boolean> = _showSplash.asStateFlow()
@@ -16,7 +20,7 @@ class MainViewModel : ViewModel() {
     init {
         viewModelScope.launch {
             // Delay handles the 2 seconds splash screen
-            delay(2000)
+            delay(1000)
             _showSplash.value = false
         }
     }

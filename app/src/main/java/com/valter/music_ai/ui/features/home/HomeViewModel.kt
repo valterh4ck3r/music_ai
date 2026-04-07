@@ -14,6 +14,10 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
+
 data class HomeUiState(
     val songs: List<SongUi> = emptyList(),
     val recentlyPlayed: List<SongUi> = emptyList(),
@@ -25,9 +29,14 @@ data class HomeUiState(
     val canLoadMore: Boolean = true
 )
 
-class HomeViewModel(
-    private val repository: HomeRepository
+
+@HiltViewModel
+class HomeViewModel @Inject constructor(
+    private val repository: HomeRepository,
+    private val connectivityObserver: NetworkConnectivityObserver
 ) : ViewModel() {
+
+    val isConnected = connectivityObserver.isConnected
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
@@ -191,12 +200,4 @@ class HomeViewModel(
         }
     }
 
-    class Factory(
-        private val repository: HomeRepository
-    ) : ViewModelProvider.Factory {
-        @Suppress("UNCHECKED_CAST")
-        override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return HomeViewModel(repository) as T
-        }
-    }
 }
