@@ -70,7 +70,7 @@ class SongViewModel @Inject constructor(
 
     private fun loadPlaylist(query: String, currentTrackId: Long) {
         viewModelScope.launch {
-            repository.searchSongs(query, limit = 50, offset = 0)
+            repository.searchSongs(query, limit = 200, offset = 0)
                 .catch { /* ignore */ }
                 .collect { state ->
                     if (state is ResponseState.Success) {

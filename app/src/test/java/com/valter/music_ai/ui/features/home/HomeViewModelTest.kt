@@ -112,13 +112,13 @@ class HomeViewModelTest {
         advanceTimeBy(400)
         advanceUntilIdle()
 
-        coVerify { repository.searchSongs("Prince", any(), 0) }
+        coVerify { repository.searchSongs("Prince", 200, 0, any()) }
     }
 
     @Test
     fun `loadNextPage increments offset and appends songs`() = runTest {
-        // Initial load needs PAGE_SIZE (20) songs so canLoadMore = true
-        val initialSongs = (1L..20L).map { i ->
+        // Initial load needs > 20 songs so canLoadMore = true internally
+        val initialSongs = (1L..21L).map { i ->
             Song(
                 trackId = i,
                 trackName = "Song $i",
@@ -140,22 +140,6 @@ class HomeViewModelTest {
         assertEquals(20, data.songs.size)
         assertTrue(data.canLoadMore)
 
-        // Set up for next page
-        val nextPageSongs = listOf(
-            Song(
-                trackId = 21L,
-                trackName = "Billie Jean",
-                artistName = "Michael Jackson",
-                collectionName = "Thriller",
-                artworkUrl100 = null,
-                previewUrl = null,
-                trackTimeMillis = 280000
-            )
-        )
-        coEvery {
-            repository.searchSongs(any(), any(), any(), any())
-        } returns flowOf(ResponseState.Success(nextPageSongs))
-
         viewModel.loadNextPage()
         advanceUntilIdle()
 
@@ -164,7 +148,6 @@ class HomeViewModelTest {
         // Should have original 20 + 1 new
         assertEquals(21, updatedData.songs.size)
         assertFalse(updatedData.isLoadingMore)
-        // 1 < PAGE_SIZE, so canLoadMore should be false now
         assertFalse(updatedData.canLoadMore)
     }
 
@@ -198,7 +181,7 @@ class HomeViewModelTest {
     @Test
     fun `clearError removes error from state`() = runTest {
         coEvery {
-            repository.searchSongs(any(), any(), any())
+            repository.searchSongs(any(), any(), any(), any())
         } returns flowOf(ResponseState.Error(message = "Error"))
 
         viewModel = createViewModel()

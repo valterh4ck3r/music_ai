@@ -36,6 +36,7 @@ class HomeViewModel @Inject constructor(
 
     private var uiData = HomeUiData()
 
+    private var allLoadedSongs: List<SongUi> = emptyList()
     private var currentOffset = 0
     private var searchJob: Job? = null
 
@@ -76,35 +77,19 @@ class HomeViewModel @Inject constructor(
             _uiState.value = ResponseState.Success(uiData)
         }
 
-        val query = uiData.searchQuery.ifBlank { DEFAULT_SEARCH_TERM }
-
         viewModelScope.launch {
-            repository.searchSongs(query, PAGE_SIZE, currentOffset)
-                // wait, if searchSongs emits flow, let's collect it
-                .collect { state ->
-                    when (state) {
-                        is ResponseState.Success -> {
-                            val newSongs = state.data.toUiList()
-                            currentOffset += newSongs.size
-                            uiData = uiData.copy(
-                                songs = uiData.songs + newSongs,
-                                isLoadingMore = false,
-                                canLoadMore = newSongs.size >= PAGE_SIZE
-                            )
-                            _uiState.value = ResponseState.Success(uiData)
-                        }
-                        is ResponseState.Error -> {
-                            uiData = uiData.copy(isLoadingMore = false)
-                            // We still want to maintain the existing items if they exist
-                            // so usually we'd keep Success state to keep showing songs, or transition to Error.
-                            // Emitting Error here will blank out screen. Let's just emit Error as requested.
-                            _uiState.value = ResponseState.Error(statusCode = state.statusCode, message = state.message)
-                        }
-                        is ResponseState.Loading -> {
-                            // Handled by isLoadingMore
-                        }
-                    }
-                }
+            // Sleep slightly just to show the shimmer skeleton loading for a fluid smooth UI
+            kotlinx.coroutines.delay(500)
+
+            val nextBatch = allLoadedSongs.drop(currentOffset).take(PAGE_SIZE)
+            currentOffset += nextBatch.size
+
+            uiData = uiData.copy(
+                songs = uiData.songs + nextBatch,
+                isLoadingMore = false,
+                canLoadMore = currentOffset < allLoadedSongs.size
+            )
+            _uiState.value = ResponseState.Success(uiData)
         }
     }
 
@@ -160,17 +145,23 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Note: searchSongs now returns ResponseState inside the flow
-            repository.searchSongs(term, PAGE_SIZE, currentOffset, forceRemote = isRefresh)
+            // Requesting 200 items as requested for memory lazy loading
+            repository.searchSongs(term, 200, 0, forceRemote = isRefresh)
                 .collect { state ->
                     when (state) {
                         is ResponseState.Success -> {
-                            val newSongs = state.data.toUiList()
-                            currentOffset = newSongs.size
+                            allLoadedSongs = state.data.toUiList()
+                            
+                            if (currentOffset < PAGE_SIZE) {
+                                currentOffset = PAGE_SIZE
+                            }
+                            
+                            val visibleSongs = allLoadedSongs.take(currentOffset)
+                            
                             uiData = uiData.copy(
-                                songs = newSongs,
+                                songs = visibleSongs,
                                 isRefreshing = false,
-                                canLoadMore = newSongs.size >= PAGE_SIZE
+                                canLoadMore = currentOffset < allLoadedSongs.size
                             )
                             _uiState.value = ResponseState.Success(uiData)
                         }

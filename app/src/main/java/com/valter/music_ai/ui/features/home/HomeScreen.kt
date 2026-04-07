@@ -25,8 +25,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
@@ -47,13 +46,17 @@ import com.valter.music_ai.ui.theme.Teal
 import com.valter.music_ai.ui.features.home.components.PullToRefreshLayout
 import com.valter.music_ai.ui.features.home.components.SongListItemShimmer
 import com.valter.music_ai.domain.model.ResponseState
+import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.ui.features.home.model.HomeUiData
+import com.valter.music_ai.ui.features.song.components.SongOptionsBottomSheet
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel,
-    onNavigateToSong: (String) -> Unit
+    onNavigateToSong: (String) -> Unit,
+    onNavigateToAlbum: (String) -> Unit
 ) {
     val stateResponse by viewModel.uiState.collectAsState()
     val uiState = (stateResponse as? ResponseState.Success)?.data ?: HomeUiData()
@@ -65,6 +68,11 @@ fun HomeScreen(
     val listState = rememberLazyListState()
     
     var isSearchVisible by remember { mutableStateOf(false) }
+    
+    // Bottom Sheet state
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    var selectedSongForOptions by remember { mutableStateOf<Song?>(null) }
 
     // Hide search bar on pull down to refresh
     LaunchedEffect(uiState.isRefreshing) {
@@ -175,7 +183,10 @@ fun HomeScreen(
                             val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
                             onNavigateToSong(base64)
                         },
-                        onMoreClick = { viewModel.onSongMoreClick(song) }
+                        onMoreClick = { 
+                            selectedSongForOptions = song.originalSong
+                            showSheet = true
+                        }
                     )
                 }
                 
@@ -213,7 +224,10 @@ fun HomeScreen(
                             val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
                             onNavigateToSong(base64)
                         },
-                        onMoreClick = { viewModel.onSongMoreClick(song) }
+                        onMoreClick = { 
+                            selectedSongForOptions = song.originalSong
+                            showSheet = true
+                        }
                     )
                 }
 
@@ -237,5 +251,20 @@ fun HomeScreen(
                 }
             }
         }
+    }
+
+    if (showSheet) {
+        SongOptionsBottomSheet(
+            song = selectedSongForOptions,
+            sheetState = sheetState,
+            onDismissRequest = { showSheet = false },
+            onViewAlbumClick = {
+                selectedSongForOptions?.let { s ->
+                    val json = com.google.gson.Gson().toJson(s)
+                    val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+                    onNavigateToAlbum(base64)
+                }
+            }
+        )
     }
 }

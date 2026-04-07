@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.SubcomposeAsyncImage
 import coil.request.CachePolicy
 import coil.request.ImageRequest
+import com.valentinilk.shimmer.shimmer
 import com.valter.music_ai.ui.theme.Music_aiTheme
 import com.valter.music_ai.ui.theme.OnDarkTextSecondary
 import com.valter.music_ai.ui.theme.Teal
@@ -47,6 +49,7 @@ fun SongListItem(
     onMoreClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -74,10 +77,11 @@ fun SongListItem(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize(),
                     loading = {
-                        CircularProgressIndicator(
-                            color = Teal,
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
+                        Box(
+                            modifier = modifier
+                                .height(24.dp)
+                                .width(24.dp)
+                                .shimmer(),
                         )
                     },
                     error = {
