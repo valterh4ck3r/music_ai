@@ -70,8 +70,7 @@ fun HomeScreen(
             (stateResponse as? ResponseState.Success)?.data ?: viewModel.getUiData()
         }
     }
-    val isLoading = stateResponse is ResponseState.Loading
-    val isError = stateResponse is ResponseState.Error
+
     val errorMessage = (stateResponse as? ResponseState.Error)?.message
     
     val isConnected by viewModel.isConnected.collectAsState(initial = true)
@@ -248,43 +247,38 @@ fun HomeScreen(
                 }
             }
 
-            // Loading or Refreshing state
-            if (isLoading && uiState.songs.isEmpty()) {
-                items(10) {
-                    SongListItemShimmer()
+            when(stateResponse){
+                is ResponseState.Success -> {
+                    // Song list with pagination
+                    items(
+                        items = uiState.songs,
+                        key = { "song_${it.id}" }
+                    ) { song ->
+                        SongListItem(
+                            title = song.title,
+                            artist = song.artist,
+                            albumArtUrl = song.albumArtUrl,
+                            onClick = {
+                                viewModel.onSongClick(song)
+                                val json = com.google.gson.Gson().toJson(song.originalSong)
+                                val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+                                onNavigateToSong(base64)
+                            },
+                            onMoreClick = {
+                                selectedSongForOptions = song.originalSong
+                                showSheet = true
+                            }
+                        )
+                    }
                 }
-            } else {
-                // Song list with pagination
-                items(
-                    items = uiState.songs,
-                    key = { "song_${it.id}" }
-                ) { song ->
-                    SongListItem(
-                        title = song.title,
-                        artist = song.artist,
-                        albumArtUrl = song.albumArtUrl,
-                        onClick = { 
-                            viewModel.onSongClick(song)
-                            val json = com.google.gson.Gson().toJson(song.originalSong)
-                            val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
-                            onNavigateToSong(base64)
-                        },
-                        onMoreClick = { 
-                            selectedSongForOptions = song.originalSong
-                            showSheet = true
-                        }
-                    )
-                }
-
-                // Loading more indicator
-                if (uiState.isLoadingMore) {
-                    items(3) {
+                is ResponseState.Loading -> {
+                    // Song List Shimmer Layout
+                    items(10) {
                         SongListItemShimmer()
                     }
                 }
-
-                // Error state
-                if (isError) {
+                is ResponseState.Error -> {
+                    // Shows Error
                     item {
                         Text(
                             text = errorMessage ?: "Unknown error",
@@ -293,6 +287,13 @@ fun HomeScreen(
                             modifier = Modifier.padding(16.dp)
                         )
                     }
+                }
+            }
+
+            // Loading more indicator
+            if (uiState.isLoadingMore) {
+                items(3) {
+                    SongListItemShimmer()
                 }
             }
         }

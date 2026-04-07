@@ -59,6 +59,11 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
+    // Media3
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.ui)
+    implementation(libs.media3.session)
+
     // SplashScreen
     implementation(libs.androidx.core.splashscreen)
 

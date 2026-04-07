@@ -34,7 +34,7 @@ Ensure you have the correct Java version installed (JDK 21) and that your `JAVA_
 
 ### **2. Cloning the project**
 ```bash
-git clone <repository-url>
+git clone https://github.com/valterh4ck3r/music_ai
 cd music-ai
 ```
 

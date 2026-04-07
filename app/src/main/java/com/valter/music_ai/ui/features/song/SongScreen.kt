@@ -25,6 +25,8 @@ import androidx.compose.material.icons.filled.FastRewind
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Repeat
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,6 +35,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,13 +46,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.valter.music_ai.R
 import com.valter.music_ai.ui.features.song.components.SongOptionsBottomSheet
 import com.valter.music_ai.ui.theme.DarkBackground
 import com.valter.music_ai.ui.theme.OnDarkTextSecondary
@@ -68,9 +69,15 @@ fun SongScreen(
     var showSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
-    // Replace iTunes small image size with high-resolution image size 
+    // Replace iTunes small image size with high-resolution image size
     // e.g., replacing 100x100bb.jpg with 600x600bb.jpg
     val highResArtwork = song?.artworkUrl100?.replace("100x100bb", "600x600bb")
+
+    DisposableEffect(Unit) {
+        onDispose {
+            viewModel.pause()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -90,7 +97,10 @@ fun SongScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
-                    onClick = onNavigateBack,
+                    onClick = {
+                        viewModel.pause()
+                        onNavigateBack()
+                    },
                     modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
@@ -212,12 +222,20 @@ fun SongScreen(
                     .clickable { viewModel.togglePlayPause() },
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                    contentDescription = if (uiState.isPlaying) "Pause" else "Play",
-                    tint = Color.White,
-                    modifier = Modifier.size(36.dp)
-                )
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(36.dp),
+                        color = Color.White,
+                        strokeWidth = 3.dp
+                    )
+                } else {
+                    Icon(
+                        imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                        contentDescription = if (uiState.isPlaying) "Pause" else "Play",
+                        tint = Color.White,
+                        modifier = Modifier.size(36.dp)
+                    )
+                }
             }
 
             // Central Skip Controls
@@ -247,7 +265,7 @@ fun SongScreen(
             // Loop/Repeat
             IconButton(onClick = { viewModel.toggleRepeat() }) {
                 Icon(
-                    painter = painterResource(id = R.drawable.ic_repeat),
+                    imageVector = Icons.Default.Repeat,
                     contentDescription = "Repeat",
                     tint = if (uiState.isRepeatEnabled) Color.White else Color.Gray,
                     modifier = Modifier.size(28.dp)

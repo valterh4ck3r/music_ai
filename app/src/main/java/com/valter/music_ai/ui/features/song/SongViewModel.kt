@@ -1,14 +1,19 @@
 package com.valter.music_ai.ui.features.song
 
+import android.content.Context
 import android.util.Base64
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 import com.google.gson.Gson
 import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,50 +26,83 @@ import javax.inject.Inject
 
 data class SongUiState(
     val song: Song? = null,
-    val isPlaying: Boolean = true,
+    val isPlaying: Boolean = false,
+    val isLoading: Boolean = false,
     val progressMs: Long = 0L,
-    val totalMs: Long = 234000L, // fallback to ~3:54 if null
+    val totalMs: Long = 0L,
     val isRepeatEnabled: Boolean = false
 )
 
 @HiltViewModel
 class SongViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: HomeRepository
+    private val repository: HomeRepository,
+    @ApplicationContext context: Context
 ) : ViewModel() {
+
+    private val player = ExoPlayer.Builder(context).build()
 
     private val _uiState = MutableStateFlow(SongUiState())
     val uiState: StateFlow<SongUiState> = _uiState.asStateFlow()
 
     private var progressJob: Job? = null
-    
-    // Playlist logic
     private var playlist: List<Song> = emptyList()
     private var currentIndex: Int = -1
 
     init {
+        setupPlayer()
         val songBase64: String? = savedStateHandle["songBase64"]
         songBase64?.let { base64 ->
             try {
-                // Decode from URL_SAFE Base64
                 val json = String(Base64.decode(base64, Base64.URL_SAFE or Base64.NO_WRAP))
                 val song = Gson().fromJson(json, Song::class.java)
-                _uiState.update { 
-                    it.copy(
-                        song = song,
-                        totalMs = song.trackTimeMillis ?: 234000L,
-                        progressMs = 0L
-                    )
-                }
-                startProgress()
+                prepareSong(song)
                 markAsPlayed(song)
-
-                // Load album playlist
-                val albumQuery = song.collectionName ?: song.artistName
-                loadPlaylist(albumQuery, song.trackId)
+                loadPlaylist(song.collectionName ?: song.artistName, song.trackId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    private fun setupPlayer() {
+        player.addListener(object : Player.Listener {
+            override fun onIsPlayingChanged(isPlaying: Boolean) {
+                _uiState.update { it.copy(isPlaying = isPlaying) }
+                if (isPlaying) startProgressUpdater() else stopProgressUpdater()
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                _uiState.update { it.copy(isLoading = state == Player.STATE_BUFFERING) }
+                if (state == Player.STATE_READY) {
+                    _uiState.update { it.copy(totalMs = player.duration) }
+                }
+                if (state == Player.STATE_ENDED) {
+                    if (_uiState.value.isRepeatEnabled) {
+                        player.seekTo(0)
+                        player.play()
+                    } else {
+                        nextSong()
+                    }
+                }
+            }
+        })
+    }
+
+    private fun prepareSong(song: Song) {
+        _uiState.update {
+            it.copy(
+                song = song,
+                progressMs = 0L,
+                totalMs = song.trackTimeMillis ?: 0L,
+                isPlaying = false
+            )
+        }
+        song.previewUrl?.let { url ->
+            val mediaItem = MediaItem.fromUri(url)
+            player.setMediaItem(mediaItem)
+            player.prepare()
+            player.play()
         }
     }
 
@@ -74,14 +112,19 @@ class SongViewModel @Inject constructor(
                 .catch { /* ignore */ }
                 .collect { state ->
                     if (state is ResponseState.Success) {
-                        // Filter to keep only the actual album tracks if possible, 
-                        // but iTunes search is fuzzy so we just use the results as a playlist queue.
                         playlist = state.data
-                        val index = playlist.indexOfFirst { it.trackId == currentTrackId }
-                        currentIndex = if (index >= 0) index else 0
+                        currentIndex = playlist.indexOfFirst { it.trackId == currentTrackId }
                     }
                 }
         }
+    }
+
+    fun togglePlayPause() {
+        if (player.isPlaying) player.pause() else player.play()
+    }
+
+    fun pause() {
+        player.pause()
     }
 
     fun nextSong() {
@@ -98,63 +141,39 @@ class SongViewModel @Inject constructor(
 
     private fun updateToCurrentIndexSong() {
         val nextSong = playlist.getOrNull(currentIndex) ?: return
-        _uiState.update {
-            it.copy(
-                song = nextSong,
-                totalMs = nextSong.trackTimeMillis ?: 234000L,
-                progressMs = 0L
-            )
-        }
+        prepareSong(nextSong)
         markAsPlayed(nextSong)
-        if (!_uiState.value.isPlaying) {
-            togglePlayPause() // auto-play next song
-        } else {
-            startProgress() // restart progress timer
-        }
     }
 
     private fun markAsPlayed(song: Song) {
-        viewModelScope.launch {
-            repository.markSongAsPlayed(song)
-        }
+        viewModelScope.launch { repository.markSongAsPlayed(song) }
     }
 
-    fun togglePlayPause() {
-        val current = _uiState.value
-        _uiState.update { it.copy(isPlaying = !current.isPlaying) }
-        if (!current.isPlaying) {
-            startProgress()
-        } else {
-            progressJob?.cancel()
-        }
-    }
-    
     fun seekTo(progressMs: Long) {
-        _uiState.update { it.copy(progressMs = progressMs) }
+        player.seekTo(progressMs)
+//        _uiState.update { it.copy(progressMs = progressMs) }
     }
 
     fun toggleRepeat() {
         _uiState.update { it.copy(isRepeatEnabled = !it.isRepeatEnabled) }
     }
 
-    private fun startProgress() {
+    private fun startProgressUpdater() {
         progressJob?.cancel()
         progressJob = viewModelScope.launch {
-            while (_uiState.value.isPlaying) {
-                delay(1000)
-                val current = _uiState.value
-                val newProgress = current.progressMs + 1000
-                if (newProgress >= current.totalMs) {
-                    if (current.isRepeatEnabled) {
-                        _uiState.update { it.copy(progressMs = 0L) }
-                    } else {
-                        nextSong()
-                        break
-                    }
-                } else {
-                    _uiState.update { it.copy(progressMs = newProgress) }
-                }
+            while (true) {
+                _uiState.update { it.copy(progressMs = player.currentPosition) }
+                delay(500)
             }
         }
+    }
+
+    private fun stopProgressUpdater() {
+        progressJob?.cancel()
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        player.release()
     }
 }
