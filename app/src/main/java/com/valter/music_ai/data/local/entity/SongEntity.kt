@@ -14,5 +14,6 @@ data class SongEntity(
     val previewUrl: String?,
     val trackTimeMillis: Long?,
     val lastPlayedAt: Long? = null,
+    val previewUrlLocal: String? = null,
     val cachedAt: Long = System.currentTimeMillis()
 )

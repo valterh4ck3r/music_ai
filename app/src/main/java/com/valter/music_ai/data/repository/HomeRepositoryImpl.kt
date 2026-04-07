@@ -1,5 +1,6 @@
 package com.valter.music_ai.data.repository
 
+import android.content.Context
 import com.valter.music_ai.data.local.dao.SongDao
 import com.valter.music_ai.data.local.mapper.SongEntityMapper.toDomainList
 import com.valter.music_ai.data.local.mapper.SongEntityMapper.toEntity
@@ -8,15 +9,20 @@ import com.valter.music_ai.data.remote.mapper.SongDtoMapper.toDomainList
 import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+import java.io.File
 import javax.inject.Inject
 
 class HomeRepositoryImpl @Inject constructor(
     private val apiService: ITunesApiService,
-    private val songDao: SongDao
+    private val songDao: SongDao,
+    @ApplicationContext private val context: Context
 ) : HomeRepository {
 
     /**
@@ -57,12 +63,56 @@ class HomeRepositoryImpl @Inject constructor(
     }
 
     override suspend fun markSongAsPlayed(song: Song) {
-        // Upsert: ensure the song exists in the DB before marking it as played.
-        // This is critical when cache is disabled — the UPDATE would silently fail
-        // on a song that was never stored, causing the recently played list to stay empty.
         val now = System.currentTimeMillis()
-        val entity = song.toEntity().copy(lastPlayedAt = now)
-        songDao.insertAll(listOf(entity))
+
+        // 1. Fetch current stored data for this song from DB to keep local path
+        val existingEntity = songDao.getSongById(song.trackId)
+
+        // 2. Prepare the new entity with current timestamp and existing local path
+        var updatedEntity = song.toEntity().copy(
+            lastPlayedAt = now,
+            previewUrlLocal = existingEntity?.previewUrlLocal ?: song.previewUrlLocal
+        )
+
+        // 3. Only download if we don't have it locally or the file was deleted
+        val needsDownload = song.previewUrl != null && (
+            updatedEntity.previewUrlLocal == null ||
+            !File(updatedEntity.previewUrlLocal!!).exists()
+        )
+
+        if (needsDownload) {
+            val localPath = downloadAndSavePreview(song.trackId, song.previewUrl!!)
+            if (localPath != null) {
+                updatedEntity = updatedEntity.copy(previewUrlLocal = localPath)
+            }
+        }
+
+        songDao.insertAll(listOf(updatedEntity))
+    }
+
+    private suspend fun downloadAndSavePreview(trackId: Long, previewUrl: String): String? {
+        return withContext(Dispatchers.IO) {
+            try {
+                val response = apiService.downloadFile(previewUrl)
+                if (response.isSuccessful) {
+                    val body = response.body() ?: return@withContext null
+                    val file = File(context.filesDir, "previews/$trackId.m4a")
+                    file.parentFile?.mkdirs()
+
+                    body.byteStream().use { inputStream ->
+                        file.outputStream().use { outputStream ->
+                            inputStream.copyTo(outputStream)
+                        }
+                    }
+                    file.absolutePath
+                } else {
+                    null
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+                null
+            }
+        }
     }
 
     override suspend fun clearRecentlyPlayed() {

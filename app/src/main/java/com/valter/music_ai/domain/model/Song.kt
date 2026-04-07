@@ -8,5 +8,6 @@ data class Song(
     val artworkUrl100: String?,
     val previewUrl: String?,
     val trackTimeMillis: Long?,
-    val lastPlayedAt: Long? = null
+    val lastPlayedAt: Long? = null,
+    val previewUrlLocal: String? = null
 )

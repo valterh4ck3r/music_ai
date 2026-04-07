@@ -14,7 +14,8 @@ object SongEntityMapper {
             artworkUrl100 = artworkUrl100,
             previewUrl = previewUrl,
             trackTimeMillis = trackTimeMillis,
-            lastPlayedAt = lastPlayedAt
+            lastPlayedAt = lastPlayedAt,
+            previewUrlLocal = previewUrlLocal
         )
     }
 
@@ -27,7 +28,8 @@ object SongEntityMapper {
             artworkUrl100 = artworkUrl100,
             previewUrl = previewUrl,
             trackTimeMillis = trackTimeMillis,
-            lastPlayedAt = lastPlayedAt
+            lastPlayedAt = lastPlayedAt,
+            previewUrlLocal = previewUrlLocal
         )
     }
 

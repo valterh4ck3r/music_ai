@@ -1,8 +1,12 @@
 package com.valter.music_ai.data.remote.api
 
 import com.valter.music_ai.data.remote.dto.ITunesSearchResponse
+import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.http.GET
 import retrofit2.http.Query
+import retrofit2.http.Streaming
+import retrofit2.http.Url
 
 interface ITunesApiService {
 
@@ -16,7 +20,10 @@ interface ITunesApiService {
         @Query("country") country: String = "US"
     ): ITunesSearchResponse
 
-    companion object {
+    @Streaming
+    @GET
+    suspend fun downloadFile(@Url url: String): Response<ResponseBody>
+     companion object {
         const val BASE_URL = "https://itunes.apple.com/"
     }
 }

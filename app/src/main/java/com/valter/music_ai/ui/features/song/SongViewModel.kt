@@ -98,7 +98,8 @@ class SongViewModel @Inject constructor(
                 isPlaying = false
             )
         }
-        song.previewUrl?.let { url ->
+        val playbackUrl = song.previewUrlLocal ?: song.previewUrl
+        playbackUrl?.let { url ->
             val mediaItem = MediaItem.fromUri(url)
             player.setMediaItem(mediaItem)
             player.prepare()
