@@ -13,7 +13,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -23,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.rememberNavController
-import com.valter.music_ai.data.connectivity.AndroidNetworkConnectivityObserver
+import com.valter.music_ai.di.ServiceLocator
 import com.valter.music_ai.ui.core.connectivity.ConnectivityBanner
 import com.valter.music_ai.ui.core.connectivity.ConnectivityViewModel
 import com.valter.music_ai.ui.navigation.AppNavigation
@@ -38,6 +37,9 @@ class MainActivity : ComponentActivity() {
         // Continue with regular onCreate
         super.onCreate(savedInstanceState)
 
+        // Initialize dependency injector
+        ServiceLocator.init(this)
+
         // Set up edge-to-edge display
         enableEdgeToEdge()
 
@@ -47,12 +49,11 @@ class MainActivity : ComponentActivity() {
                 val showSplash by mainViewModel.showSplash.collectAsState(initial = true)
                 val navController = rememberNavController()
 
-                // Connectivity setup
-                val connectivityObserver = remember {
-                    AndroidNetworkConnectivityObserver(this@MainActivity)
-                }
+                // Connectivity setup via ServiceLocator
                 val connectivityViewModel: ConnectivityViewModel = viewModel(
-                    factory = ConnectivityViewModel.Factory(connectivityObserver)
+                    factory = ConnectivityViewModel.Factory(
+                        ServiceLocator.networkConnectivityObserver
+                    )
                 )
                 val connectivityStatus by connectivityViewModel.status.collectAsState()
 
