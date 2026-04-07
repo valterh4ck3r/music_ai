@@ -8,6 +8,7 @@ import com.valter.music_ai.data.remote.dto.TrackDto
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
+import com.valter.music_ai.domain.model.ResponseState
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
@@ -54,8 +55,8 @@ class HomeRepositoryImplTest {
         val results = repository.searchSongs("Purple Rain", 20, 0).toList()
 
         // Then
-        assertTrue(results.any { it.isSuccess })
-        val songs = results.last().getOrNull()!!
+        assertTrue(results.any { it is ResponseState.Success })
+        val songs = (results.last { it is ResponseState.Success } as ResponseState.Success).data
         assertEquals(1, songs.size)
         assertEquals("Purple Rain", songs[0].trackName)
         assertEquals("Prince", songs[0].artistName)
@@ -93,10 +94,12 @@ class HomeRepositoryImplTest {
 
         // Then
         assertTrue(results.size >= 2)
-        // First emission should be cached
-        assertEquals("Cached Song", results[0].getOrNull()!![0].trackName)
-        // Second emission should be network
-        assertEquals("Network Song", results[1].getOrNull()!![0].trackName)
+        // First completion emission should be cached
+        val cached = (results.first { it is ResponseState.Success } as ResponseState.Success).data
+        assertEquals("Cached Song", cached[0].trackName)
+        // Second completion emission should be network
+        val network = (results.last { it is ResponseState.Success } as ResponseState.Success).data
+        assertEquals("Network Song", network[0].trackName)
     }
 
     @Test
@@ -111,7 +114,7 @@ class HomeRepositoryImplTest {
         val results = repository.searchSongs("test", 20, 0).toList()
 
         // Then
-        assertTrue(results.any { it.isFailure })
+        assertTrue(results.any { it is ResponseState.Error })
     }
 
     @Test
@@ -136,8 +139,8 @@ class HomeRepositoryImplTest {
 
         // Then
         // Should have at least the cache result, and no failure
-        assertTrue(results.any { it.isSuccess })
-        val successResult = results.first { it.isSuccess }.getOrNull()!!
+        assertTrue(results.any { it is ResponseState.Success })
+        val successResult = (results.first { it is ResponseState.Success } as ResponseState.Success).data
         assertEquals("Cached Song", successResult[0].trackName)
     }
 

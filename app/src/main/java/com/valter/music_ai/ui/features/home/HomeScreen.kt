@@ -45,20 +45,20 @@ import com.valter.music_ai.ui.features.home.components.SongListItem
 import com.valter.music_ai.ui.theme.DarkBackground
 import com.valter.music_ai.ui.theme.Teal
 import com.valter.music_ai.ui.features.home.components.PullToRefreshLayout
-
-data class SongUi(
-    val id: String,
-    val title: String,
-    val artist: String,
-    val albumArtUrl: String? = null
-)
+import com.valter.music_ai.domain.model.ResponseState
+import com.valter.music_ai.ui.features.home.model.HomeUiData
 
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel
 ) {
-    val uiState by viewModel.uiState.collectAsState()
+    val stateResponse by viewModel.uiState.collectAsState()
+    val uiState = (stateResponse as? ResponseState.Success)?.data ?: HomeUiData()
+    val isLoading = stateResponse is ResponseState.Loading
+    val isError = stateResponse is ResponseState.Error
+    val errorMessage = (stateResponse as? ResponseState.Error)?.message
+    
     val isConnected by viewModel.isConnected.collectAsState(initial = true)
     val listState = rememberLazyListState()
     
@@ -186,7 +186,7 @@ fun HomeScreen(
             }
 
             // Loading state
-            if (uiState.isLoading) {
+            if (isLoading) {
                 item {
                     Box(
                         modifier = Modifier
@@ -233,10 +233,10 @@ fun HomeScreen(
                 }
 
                 // Error state
-                uiState.error?.let { error ->
+                if (isError) {
                     item {
                         Text(
-                            text = error,
+                            text = errorMessage ?: "Unknown error",
                             color = Color.Red,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(16.dp)

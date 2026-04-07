@@ -1,8 +1,12 @@
 package com.valter.music_ai.ui.features.home
 
 import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
-import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
+import com.valter.music_ai.domain.model.Song
+import com.valter.music_ai.domain.model.ResponseState
+import com.valter.music_ai.ui.features.home.model.HomeUiData
+import com.valter.music_ai.ui.features.home.model.HomeUiState
+import com.valter.music_ai.ui.features.home.model.SongUi
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk
@@ -59,8 +63,8 @@ class HomeViewModelTest {
         observer = mockk(relaxed = true)
 
         coEvery {
-            repository.searchSongs(any(), any(), any())
-        } returns flowOf(Result.success(testSongs))
+            repository.searchSongs(any(), any(), any(), any())
+        } returns flowOf(ResponseState.Success(testSongs))
 
         coEvery {
             observer.isConnected
@@ -86,9 +90,10 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertFalse(state.isLoading)
-        assertEquals(2, state.songs.size)
-        assertEquals("Purple Rain", state.songs[0].title)
+        assertFalse(state is ResponseState.Loading)
+        val data = (state as ResponseState.Success).data
+        assertEquals(2, data.songs.size)
+        assertEquals("Purple Rain", data.songs[0].title)
     }
 
     @Test
@@ -97,7 +102,8 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         viewModel.onSearchQueryChanged("Prince")
-        assertEquals("Prince", viewModel.uiState.value.searchQuery)
+        val data = (viewModel.uiState.value as ResponseState.Success).data
+        assertEquals("Prince", data.searchQuery)
 
         // Before debounce — still shows old data
         advanceTimeBy(200)
@@ -124,14 +130,15 @@ class HomeViewModelTest {
             )
         }
         coEvery {
-            repository.searchSongs(any(), any(), any())
-        } returns flowOf(Result.success(initialSongs))
+            repository.searchSongs(any(), any(), any(), any())
+        } returns flowOf(ResponseState.Success(initialSongs))
 
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        assertEquals(20, viewModel.uiState.value.songs.size)
-        assertTrue(viewModel.uiState.value.canLoadMore)
+        val data = (viewModel.uiState.value as ResponseState.Success).data
+        assertEquals(20, data.songs.size)
+        assertTrue(data.canLoadMore)
 
         // Set up for next page
         val nextPageSongs = listOf(
@@ -146,18 +153,19 @@ class HomeViewModelTest {
             )
         )
         coEvery {
-            repository.searchSongs(any(), any(), any())
-        } returns flowOf(Result.success(nextPageSongs))
+            repository.searchSongs(any(), any(), any(), any())
+        } returns flowOf(ResponseState.Success(nextPageSongs))
 
         viewModel.loadNextPage()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
+        val updatedData = (state as ResponseState.Success).data
         // Should have original 20 + 1 new
-        assertEquals(21, state.songs.size)
-        assertFalse(state.isLoadingMore)
+        assertEquals(21, updatedData.songs.size)
+        assertFalse(updatedData.isLoadingMore)
         // 1 < PAGE_SIZE, so canLoadMore should be false now
-        assertFalse(state.canLoadMore)
+        assertFalse(updatedData.canLoadMore)
     }
 
     @Test
@@ -165,7 +173,8 @@ class HomeViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        val song = viewModel.uiState.value.songs.first()
+        val data = (viewModel.uiState.value as ResponseState.Success).data
+        val song = data.songs.first()
         viewModel.onSongClick(song)
         advanceUntilIdle()
 
@@ -175,30 +184,30 @@ class HomeViewModelTest {
     @Test
     fun `error state is set when search fails`() = runTest {
         coEvery {
-            repository.searchSongs(any(), any(), any())
-        } returns flowOf(Result.failure(Exception("Network error")))
+            repository.searchSongs(any(), any(), any(), any())
+        } returns flowOf(ResponseState.Error(message = "Network error"))
 
         viewModel = createViewModel()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertEquals("Network error", state.error)
-        assertFalse(state.isLoading)
+        assertTrue(state is ResponseState.Error)
+        assertEquals("Network error", (state as ResponseState.Error).message)
     }
 
     @Test
     fun `clearError removes error from state`() = runTest {
         coEvery {
             repository.searchSongs(any(), any(), any())
-        } returns flowOf(Result.failure(Exception("Error")))
+        } returns flowOf(ResponseState.Error(message = "Error"))
 
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value.error != null)
+        assertTrue(viewModel.uiState.value is ResponseState.Error)
 
         viewModel.clearError()
-        assertTrue(viewModel.uiState.value.error == null)
+        assertTrue(viewModel.uiState.value is ResponseState.Success)
     }
 
     @Test
@@ -220,7 +229,8 @@ class HomeViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        assertEquals(1, viewModel.uiState.value.recentlyPlayed.size)
-        assertEquals("Recent Song", viewModel.uiState.value.recentlyPlayed[0].title)
+        val data = (viewModel.uiState.value as ResponseState.Success).data
+        assertEquals(1, data.recentlyPlayed.size)
+        assertEquals("Recent Song", data.recentlyPlayed[0].title)
     }
 }

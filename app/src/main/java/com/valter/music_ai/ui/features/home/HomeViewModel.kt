@@ -17,17 +17,10 @@ import kotlinx.coroutines.launch
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
-
-data class HomeUiState(
-    val songs: List<SongUi> = emptyList(),
-    val recentlyPlayed: List<SongUi> = emptyList(),
-    val isLoading: Boolean = false,
-    val isLoadingMore: Boolean = false,
-    val isRefreshing: Boolean = false,
-    val error: String? = null,
-    val searchQuery: String = "",
-    val canLoadMore: Boolean = true
-)
+import com.valter.music_ai.domain.model.ResponseState
+import com.valter.music_ai.ui.features.home.model.HomeUiState
+import com.valter.music_ai.ui.features.home.model.HomeUiData
+import com.valter.music_ai.ui.features.home.model.SongUi
 
 
 @HiltViewModel
@@ -38,8 +31,12 @@ class HomeViewModel @Inject constructor(
 
     val isConnected = connectivityObserver.isConnected
 
-    private val _uiState = MutableStateFlow(HomeUiState())
+    private val _uiState = MutableStateFlow<HomeUiState>(ResponseState.Loading)
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    private fun currentData(): HomeUiData {
+        return (_uiState.value as? ResponseState.Success)?.data ?: HomeUiData()
+    }
 
     private var currentOffset = 0
     private var searchJob: Job? = null
@@ -56,7 +53,8 @@ class HomeViewModel @Inject constructor(
     }
 
     fun onSearchQueryChanged(query: String) {
-        _uiState.update { it.copy(searchQuery = query) }
+        val current = currentData()
+        _uiState.update { ResponseState.Success(current.copy(searchQuery = query)) }
 
         // Debounce search
         searchJob?.cancel()
@@ -71,34 +69,47 @@ class HomeViewModel @Inject constructor(
     }
 
     fun loadNextPage() {
-        val state = _uiState.value
-        if (state.isLoadingMore || !state.canLoadMore) return
+        val current = currentData()
+        if (current.isLoadingMore || !current.canLoadMore) return
 
-        _uiState.update { it.copy(isLoadingMore = true) }
+        _uiState.update { ResponseState.Success(current.copy(isLoadingMore = true)) }
 
-        val query = state.searchQuery.ifBlank { DEFAULT_SEARCH_TERM }
+        val query = current.searchQuery.ifBlank { DEFAULT_SEARCH_TERM }
 
         viewModelScope.launch {
             repository.searchSongs(query, PAGE_SIZE, currentOffset)
-                .catch { e ->
-                    _uiState.update {
-                        it.copy(isLoadingMore = false, error = e.message)
-                    }
-                }
-                .collect { result ->
-                    result.onSuccess { songs ->
-                        currentOffset += songs.size
-                        _uiState.update { state ->
-                            state.copy(
-                                songs = state.songs + songs.toUiList(),
-                                isLoadingMore = false,
-                                canLoadMore = songs.size >= PAGE_SIZE,
-                                error = null
-                            )
+                // wait, if searchSongs emits flow, let's collect it
+                .collect { state ->
+                    when (state) {
+                        is ResponseState.Success -> {
+                            val newSongs = state.data.toUiList()
+                            currentOffset += newSongs.size
+                            _uiState.update {
+                                val latest = currentData()
+                                ResponseState.Success(
+                                    latest.copy(
+                                        songs = latest.songs + newSongs,
+                                        isLoadingMore = false,
+                                        canLoadMore = newSongs.size >= PAGE_SIZE
+                                    )
+                                )
+                            }
                         }
-                    }.onFailure { e ->
-                        _uiState.update {
-                            it.copy(isLoadingMore = false, error = e.message)
+                        is ResponseState.Error -> {
+                            _uiState.update {
+                                val latest = currentData()
+                                ResponseState.Success(
+                                    // Keep old items, but clear loading state.
+                                    latest.copy(isLoadingMore = false)
+                                )
+                            }
+                            // Usually you might show a toast, but this sets overall error if we transition.
+                            // If we set the whole screen to ResponseState.Error, we lose data.
+                            // So let's emit ResponseState.Error to trigger Error visual on the screen.
+                            _uiState.value = ResponseState.Error(statusCode = state.statusCode, message = state.message)
+                        }
+                        is ResponseState.Loading -> {
+                            // Handled by isLoadingMore
                         }
                     }
                 }
@@ -116,7 +127,8 @@ class HomeViewModel @Inject constructor(
     }
 
     fun clearError() {
-        _uiState.update { it.copy(error = null) }
+        val current = currentData()
+        _uiState.value = ResponseState.Success(current)
     }
 
     fun refreshSongs() {
@@ -135,7 +147,8 @@ class HomeViewModel @Inject constructor(
             val query = randomTerms.random()
             
             // Update the search query state so the UI reflects what is currently being shown
-            _uiState.update { it.copy(searchQuery = query) }
+            val current = currentData()
+            _uiState.value = ResponseState.Success(current.copy(searchQuery = query))
 
             searchSongs(query, isRefresh = true)
         }
@@ -144,33 +157,39 @@ class HomeViewModel @Inject constructor(
     private fun searchSongs(term: String, isRefresh: Boolean = false) {
         currentOffset = 0
         if (isRefresh) {
-            _uiState.update { it.copy(isRefreshing = true, canLoadMore = true) }
+            val current = currentData()
+            _uiState.value = ResponseState.Success(current.copy(isRefreshing = true, canLoadMore = true))
         } else {
-            _uiState.update { it.copy(isLoading = true, songs = emptyList(), canLoadMore = true) }
+            val current = currentData()
+            _uiState.value = ResponseState.Loading
         }
 
         viewModelScope.launch {
+            // Note: searchSongs now returns ResponseState inside the flow
             repository.searchSongs(term, PAGE_SIZE, currentOffset, forceRemote = isRefresh)
-                .catch { e ->
-                    _uiState.update {
-                        it.copy(isLoading = false, isRefreshing = false, error = e.message)
-                    }
-                }
-                .collect { result ->
-                    result.onSuccess { songs ->
-                        currentOffset = songs.size
-                        _uiState.update {
-                            it.copy(
-                                songs = songs.toUiList(),
-                                isLoading = false,
-                                isRefreshing = false,
-                                canLoadMore = songs.size >= PAGE_SIZE,
-                                error = null
-                            )
+                .collect { state ->
+                    when (state) {
+                        is ResponseState.Success -> {
+                            val newSongs = state.data.toUiList()
+                            currentOffset = newSongs.size
+                            _uiState.update { 
+                                val current = currentData()
+                                ResponseState.Success(
+                                    current.copy(
+                                        songs = newSongs,
+                                        isRefreshing = false,
+                                        canLoadMore = newSongs.size >= PAGE_SIZE
+                                    )
+                                )
+                            }
                         }
-                    }.onFailure { e ->
-                        _uiState.update {
-                            it.copy(isLoading = false, isRefreshing = false, error = e.message)
+                        is ResponseState.Error -> {
+                            _uiState.value = ResponseState.Error(statusCode = state.statusCode, message = state.message)
+                        }
+                        is ResponseState.Loading -> {
+                            if (!isRefresh) {
+                                _uiState.value = ResponseState.Loading
+                            }
                         }
                     }
                 }
@@ -182,8 +201,9 @@ class HomeViewModel @Inject constructor(
             repository.getRecentlyPlayedSongs()
                 .catch { /* silently fail, recently played is optional */ }
                 .collect { songs ->
-                    _uiState.update {
-                        it.copy(recentlyPlayed = songs.toUiList())
+                    val current = currentData()
+                    if (_uiState.value !is ResponseState.Error) {
+                        _uiState.value = ResponseState.Success(current.copy(recentlyPlayed = songs.toUiList()))
                     }
                 }
         }

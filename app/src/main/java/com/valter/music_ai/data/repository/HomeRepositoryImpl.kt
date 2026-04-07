@@ -7,9 +7,12 @@ import com.valter.music_ai.data.remote.api.ITunesApiService
 import com.valter.music_ai.data.remote.mapper.SongDtoMapper.toDomainList
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import com.valter.music_ai.domain.model.ResponseState
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flow
+import retrofit2.HttpException
 import kotlinx.coroutines.flow.map
 
 import javax.inject.Inject
@@ -31,11 +34,12 @@ class HomeRepositoryImpl @Inject constructor(
         limit: Int,
         offset: Int,
         forceRemote: Boolean
-    ): Flow<Result<List<Song>>> = flow {
+    ): Flow<ResponseState<List<Song>>> = flow {
         // Step 1: Try cache first if not forcing remote
+        emit(ResponseState.Loading)
         val cached = if (!forceRemote) songDao.searchSongs(term, limit, offset).firstOrNull() else null
         if (!cached.isNullOrEmpty()) {
-            emit(Result.success(cached.toDomainList()))
+            emit(ResponseState.Success(cached.toDomainList()))
         }
 
         // Step 2: Fetch from network
@@ -50,13 +54,13 @@ class HomeRepositoryImpl @Inject constructor(
             // Step 3: Cache the results
             songDao.insertAll(songs.toEntityList())
 
-            emit(Result.success(songs))
+            delay(5000)
+
+            emit(ResponseState.Success(songs))
+        } catch (e: HttpException) {
+            emit(ResponseState.Error(statusCode = e.code(), message = e.message ?: "Unknown HttpException"))
         } catch (e: Exception) {
-            // Step 4: If cache was empty too, emit failure
-            if (cached.isNullOrEmpty()) {
-                emit(Result.failure(e))
-            }
-            // If cache was available, we already emitted it — just silently fail network
+            emit(ResponseState.Error(statusCode = null, message = e.message ?: "Network error"))
         }
     }
 
