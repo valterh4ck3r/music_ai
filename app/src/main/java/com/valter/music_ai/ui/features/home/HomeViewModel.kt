@@ -206,7 +206,8 @@ class HomeViewModel @Inject constructor(
                 id = song.trackId.toString(),
                 title = song.trackName,
                 artist = song.artistName,
-                albumArtUrl = song.artworkUrl100
+                albumArtUrl = song.artworkUrl100,
+                originalSong = song
             )
         }
     }

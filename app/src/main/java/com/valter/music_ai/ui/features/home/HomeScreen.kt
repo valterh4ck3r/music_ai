@@ -52,7 +52,8 @@ import com.valter.music_ai.ui.features.home.model.HomeUiData
 @Composable
 fun HomeScreen(
     modifier: Modifier = Modifier,
-    viewModel: HomeViewModel
+    viewModel: HomeViewModel,
+    onNavigateToSong: (String) -> Unit
 ) {
     val stateResponse by viewModel.uiState.collectAsState()
     val uiState = (stateResponse as? ResponseState.Success)?.data ?: HomeUiData()
@@ -168,7 +169,12 @@ fun HomeScreen(
                         title = song.title,
                         artist = song.artist,
                         albumArtUrl = song.albumArtUrl,
-                        onClick = { viewModel.onSongClick(song) },
+                        onClick = { 
+                            viewModel.onSongClick(song)
+                            val json = com.google.gson.Gson().toJson(song.originalSong)
+                            val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+                            onNavigateToSong(base64)
+                        },
                         onMoreClick = { viewModel.onSongMoreClick(song) }
                     )
                 }
@@ -201,7 +207,12 @@ fun HomeScreen(
                         title = song.title,
                         artist = song.artist,
                         albumArtUrl = song.albumArtUrl,
-                        onClick = { viewModel.onSongClick(song) },
+                        onClick = { 
+                            viewModel.onSongClick(song)
+                            val json = com.google.gson.Gson().toJson(song.originalSong)
+                            val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+                            onNavigateToSong(base64)
+                        },
                         onMoreClick = { viewModel.onSongMoreClick(song) }
                     )
                 }
