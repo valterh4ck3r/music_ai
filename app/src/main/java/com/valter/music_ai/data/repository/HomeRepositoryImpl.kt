@@ -2,6 +2,7 @@ package com.valter.music_ai.data.repository
 
 import com.valter.music_ai.data.local.dao.SongDao
 import com.valter.music_ai.data.local.mapper.SongEntityMapper.toDomainList
+import com.valter.music_ai.data.local.mapper.SongEntityMapper.toEntity
 import com.valter.music_ai.data.local.mapper.SongEntityMapper.toEntityList
 import com.valter.music_ai.data.remote.api.ITunesApiService
 import com.valter.music_ai.data.remote.mapper.SongDtoMapper.toDomainList
@@ -26,7 +27,6 @@ class HomeRepositoryImpl @Inject constructor(
      * Offline-first search:
      * 1. Emit cached results immediately if available
      * 2. Fetch from network in background
-     * 3. Cache network results and emit them
      * 4. If network fails and we had no cache, emit failure
      */
     override fun searchSongs(
@@ -35,12 +35,7 @@ class HomeRepositoryImpl @Inject constructor(
         offset: Int,
         forceRemote: Boolean
     ): Flow<ResponseState<List<Song>>> = flow {
-        // Step 1: Try cache first if not forcing remote
         emit(ResponseState.Loading)
-        val cached = if (!forceRemote) songDao.searchSongs(term, limit, offset).firstOrNull() else null
-        if (!cached.isNullOrEmpty()) {
-            emit(ResponseState.Success(cached.toDomainList()))
-        }
 
         // Step 2: Fetch from network
         try {
@@ -50,9 +45,6 @@ class HomeRepositoryImpl @Inject constructor(
                 offset = offset
             )
             val songs = response.results.toDomainList()
-
-            // Step 3: Cache the results
-            songDao.insertAll(songs.toEntityList())
 
             emit(ResponseState.Success(songs))
         } catch (e: HttpException) {
@@ -68,8 +60,13 @@ class HomeRepositoryImpl @Inject constructor(
         }
     }
 
-    override suspend fun markSongAsPlayed(trackId: Long) {
-        songDao.markAsPlayed(trackId, System.currentTimeMillis())
+    override suspend fun markSongAsPlayed(song: Song) {
+        // Upsert: ensure the song exists in the DB before marking it as played.
+        // This is critical when cache is disabled — the UPDATE would silently fail
+        // on a song that was never stored, causing the recently played list to stay empty.
+        val now = System.currentTimeMillis()
+        val entity = song.toEntity().copy(lastPlayedAt = now)
+        songDao.insertAll(listOf(entity))
     }
 
     override suspend fun clearRecentlyPlayed() {

@@ -43,7 +43,8 @@ fun AppNavigation(
             val songViewModel: SongViewModel = hiltViewModel()
             SongScreen(
                 viewModel = songViewModel,
-                onNavigateBack = { navController.navigate("home")},
+                onNavigateBack = { navController.navigate("home") { popUpTo("home") { inclusive = true } }
+                                 },
                 onNavigateToAlbum = { songBase64 ->
                     navController.navigate("album/$songBase64")
                 }

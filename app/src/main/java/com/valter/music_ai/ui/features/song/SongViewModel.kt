@@ -58,6 +58,7 @@ class SongViewModel @Inject constructor(
                     )
                 }
                 startProgress()
+                markAsPlayed(song)
 
                 // Load album playlist
                 val albumQuery = song.collectionName ?: song.artistName
@@ -105,10 +106,17 @@ class SongViewModel @Inject constructor(
                 progressMs = 0L
             )
         }
+        markAsPlayed(nextSong)
         if (!_uiState.value.isPlaying) {
             togglePlayPause() // auto-play next song
         } else {
             startProgress() // restart progress timer
+        }
+    }
+
+    private fun markAsPlayed(song: Song) {
+        viewModelScope.launch {
+            repository.markSongAsPlayed(song)
         }
     }
 

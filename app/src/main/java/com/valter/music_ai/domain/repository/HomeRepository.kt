@@ -20,7 +20,7 @@ interface HomeRepository {
     /**
      * Mark a song as recently played (updates lastPlayedAt timestamp).
      */
-    suspend fun markSongAsPlayed(trackId: Long)
+    suspend fun markSongAsPlayed(song: Song)
 
     /**
      * Clear all recently played songs from local cache.

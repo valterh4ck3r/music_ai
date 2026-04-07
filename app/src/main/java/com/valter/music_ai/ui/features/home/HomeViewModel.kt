@@ -1,26 +1,23 @@
 package com.valter.music_ai.ui.features.home
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
+import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
+import com.valter.music_ai.ui.features.home.model.HomeUiData
+import com.valter.music_ai.ui.features.home.model.SongUi
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-
-import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
-import com.valter.music_ai.domain.model.ResponseState
-import com.valter.music_ai.ui.features.home.model.HomeUiState
-import com.valter.music_ai.ui.features.home.model.HomeUiData
-import com.valter.music_ai.ui.features.home.model.SongUi
 
 
 @HiltViewModel
@@ -35,6 +32,7 @@ class HomeViewModel @Inject constructor(
     val uiState: StateFlow<ResponseState<HomeUiData>> = _uiState.asStateFlow()
 
     private var uiData = HomeUiData()
+    fun getUiData() = uiData
 
     private var allLoadedSongs: List<SongUi> = emptyList()
     private var currentOffset = 0
@@ -43,12 +41,16 @@ class HomeViewModel @Inject constructor(
     companion object {
         private const val PAGE_SIZE = 20
         private const val SEARCH_DEBOUNCE_MS = 800L
-        private const val DEFAULT_SEARCH_TERM = "pop"
+        private val RANDOM_TERMS = listOf(
+            "Drake", "The Beatles", "Daft Punk", "Rihanna",
+            "Queen", "Coldplay", "Metallica", "Eminem",
+            "Bruno Mars", "Pop", "Rock", "Jazz", "Lofi"
+        )
     }
 
     init {
         loadRecentlyPlayed()
-        searchSongs(DEFAULT_SEARCH_TERM)
+        searchSongs(RANDOM_TERMS.random())
     }
 
     fun onSearchQueryChanged(query: String) {
@@ -62,7 +64,7 @@ class HomeViewModel @Inject constructor(
         searchJob = viewModelScope.launch {
             delay(SEARCH_DEBOUNCE_MS)
             if (query.isBlank()) {
-                searchSongs(DEFAULT_SEARCH_TERM)
+                searchSongs(RANDOM_TERMS.random())
             } else {
                 searchSongs(query)
             }
@@ -78,9 +80,7 @@ class HomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            // Sleep slightly just to show the shimmer skeleton loading for a fluid smooth UI
-            kotlinx.coroutines.delay(500)
-
+            loadRecentlyPlayed()
             val nextBatch = allLoadedSongs.drop(currentOffset).take(PAGE_SIZE)
             currentOffset += nextBatch.size
 
@@ -95,12 +95,8 @@ class HomeViewModel @Inject constructor(
 
     fun onSongClick(song: SongUi) {
         viewModelScope.launch {
-            repository.markSongAsPlayed(song.id.toLongOrNull() ?: return@launch)
+            repository.markSongAsPlayed(song.originalSong)
         }
-    }
-
-    fun onSongMoreClick(song: SongUi) {
-        // TODO: Handle more options (add to playlist, share, etc.)
     }
 
     fun clearError() {
@@ -110,18 +106,17 @@ class HomeViewModel @Inject constructor(
     fun refreshSongs() {
         viewModelScope.launch {
             // Clears the recently played cache and updates the UI
-            repository.clearRecentlyPlayed()
             loadRecentlyPlayed()
 
             // Predefined list of popular artists/genres to create a dynamic feed
             val randomTerms = listOf(
-                "Drake", "The Beatles", "Daft Punk", "Rihanna", 
-                "Queen", "Coldplay", "Metallica", "Eminem", 
+                "Drake", "The Beatles", "Daft Punk", "Rihanna",
+                "Queen", "Coldplay", "Metallica", "Eminem",
                 "Bruno Mars", "Pop", "Rock", "Jazz", "Lofi"
             )
             // Pick a random term to simulate a "For You" discovery feed on refresh
             val query = randomTerms.random()
-            
+
             // Update the search query state so the UI reflects what is currently being shown
             uiData = uiData.copy(searchQuery = query)
             if (_uiState.value is ResponseState.Success) {
@@ -151,13 +146,13 @@ class HomeViewModel @Inject constructor(
                     when (state) {
                         is ResponseState.Success -> {
                             allLoadedSongs = state.data.toUiList()
-                            
+
                             if (currentOffset < PAGE_SIZE) {
                                 currentOffset = PAGE_SIZE
                             }
-                            
+
                             val visibleSongs = allLoadedSongs.take(currentOffset)
-                            
+
                             uiData = uiData.copy(
                                 songs = visibleSongs,
                                 isRefreshing = false,
@@ -165,9 +160,14 @@ class HomeViewModel @Inject constructor(
                             )
                             _uiState.value = ResponseState.Success(uiData)
                         }
+
                         is ResponseState.Error -> {
-                            _uiState.value = ResponseState.Error(statusCode = state.statusCode, message = state.message)
+                            _uiState.value = ResponseState.Error(
+                                statusCode = state.statusCode,
+                                message = state.message
+                            )
                         }
+
                         is ResponseState.Loading -> {
                             if (!isRefresh) {
                                 _uiState.value = ResponseState.Loading
@@ -181,9 +181,13 @@ class HomeViewModel @Inject constructor(
     private fun loadRecentlyPlayed() {
         viewModelScope.launch {
             repository.getRecentlyPlayedSongs()
-                .catch { /* silently fail, recently played is optional */ }
+                .catch { Log.d("HomeViewModel", "Error loading recently played: ${it.message}")}
                 .collect { songs ->
-                    uiData = uiData.copy(recentlyPlayed = songs.toUiList())
+                    val recentlyPlayedUi = songs.toUiList()
+                    uiData = uiData.copy(recentlyPlayed = recentlyPlayedUi)
+                    
+                    // If we are currently in Success state, update it.
+                    // If we are in Loading or Error, the next Success emission will use the updated uiData.
                     if (_uiState.value is ResponseState.Success) {
                         _uiState.value = ResponseState.Success(uiData)
                     }

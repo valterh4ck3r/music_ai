@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.animation.AnimatedVisibility
@@ -21,8 +20,12 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -35,8 +38,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.valter.music_ai.ui.features.home.components.SearchBar
@@ -59,7 +64,11 @@ fun HomeScreen(
     onNavigateToAlbum: (String) -> Unit
 ) {
     val stateResponse by viewModel.uiState.collectAsState()
-    val uiState = (stateResponse as? ResponseState.Success)?.data ?: HomeUiData()
+    val uiState by remember(stateResponse) {
+        derivedStateOf {
+            (stateResponse as? ResponseState.Success)?.data ?: viewModel.getUiData()
+        }
+    }
     val isLoading = stateResponse is ResponseState.Loading
     val isError = stateResponse is ResponseState.Error
     val errorMessage = (stateResponse as? ResponseState.Error)?.message
@@ -158,40 +167,75 @@ fun HomeScreen(
             }
 
             // Recently played section
-            if (uiState.recentlyPlayed.isNotEmpty() && uiState.searchQuery.isBlank()) {
+            if (uiState.recentlyPlayed.isNotEmpty()) {
                 item {
                     Text(
                         text = "Recently Played",
                         color = Color.White,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(vertical = 8.dp)
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 12.dp)
                     )
                 }
-                
-                items(
-                    items = uiState.recentlyPlayed,
-                    key = { "recent_${it.id}" }
-                ) { song ->
-                    SongListItem(
-                        title = song.title,
-                        artist = song.artist,
-                        albumArtUrl = song.albumArtUrl,
-                        onClick = { 
-                            viewModel.onSongClick(song)
-                            val json = com.google.gson.Gson().toJson(song.originalSong)
-                            val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
-                            onNavigateToSong(base64)
-                        },
-                        onMoreClick = { 
-                            selectedSongForOptions = song.originalSong
-                            showSheet = true
+
+                item {
+                    LazyRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        items(
+                            items = uiState.recentlyPlayed,
+                            key = { "recent_${it.id}" }
+                        ) { song ->
+                            // Custom item for horizontal scroll
+                            Column(
+                                modifier = Modifier
+                                    .width(120.dp)
+                                    .clickable {
+                                        viewModel.onSongClick(song)
+                                        val json = com.google.gson.Gson().toJson(song.originalSong)
+                                        val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
+                                        onNavigateToSong(base64)
+                                    },
+                                horizontalAlignment = Alignment.Start
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(120.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(Color(0xFF1A1A1A))
+                                ) {
+                                    val artworkUrl = song.albumArtUrl?.replace("100x100bb", "300x300bb")
+                                    coil.compose.AsyncImage(
+                                        model = artworkUrl,
+                                        contentDescription = null,
+                                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = song.title,
+                                    color = Color.White,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                Text(
+                                    text = song.artist,
+                                    color = com.valter.music_ai.ui.theme.OnDarkTextSecondary,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
-                    )
+                    }
                 }
-                
-                item { Spacer(modifier = Modifier.height(16.dp)) }
-                
+
+                item { Spacer(modifier = Modifier.height(24.dp)) }
+
                 item {
                     Text(
                         text = "All Songs",
@@ -204,7 +248,7 @@ fun HomeScreen(
             }
 
             // Loading or Refreshing state
-            if (isLoading || uiState.isRefreshing) {
+            if (isLoading && uiState.songs.isEmpty()) {
                 items(10) {
                     SongListItemShimmer()
                 }
@@ -257,7 +301,7 @@ fun HomeScreen(
         SongOptionsBottomSheet(
             song = selectedSongForOptions,
             sheetState = sheetState,
-            onDismissRequest = { showSheet = false },
+            onDismissRequest = { },
             onViewAlbumClick = {
                 selectedSongForOptions?.let { s ->
                     val json = com.google.gson.Gson().toJson(s)

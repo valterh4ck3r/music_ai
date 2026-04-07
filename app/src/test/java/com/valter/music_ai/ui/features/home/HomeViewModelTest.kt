@@ -1,12 +1,9 @@
 package com.valter.music_ai.ui.features.home
 
 import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
-import com.valter.music_ai.domain.repository.HomeRepository
-import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.model.ResponseState
-import com.valter.music_ai.ui.features.home.model.HomeUiData
-import com.valter.music_ai.ui.features.home.model.HomeUiState
-import com.valter.music_ai.ui.features.home.model.SongUi
+import com.valter.music_ai.domain.model.Song
+import com.valter.music_ai.domain.repository.HomeRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.mockk

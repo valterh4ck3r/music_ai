@@ -199,10 +199,20 @@ class HomeRepositoryImplTest {
 
     @Test
     fun `markSongAsPlayed calls dao with correct trackId`() = runTest {
+        // Given
+        val song = Song(
+            trackId = 123L,
+            trackName = "Test Song",
+            artistName = "Test Artist",
+            collectionName = null,
+            artworkUrl100 = null,
+            previewUrl = null,
+            trackTimeMillis = null
+        )
         // When
-        repository.markSongAsPlayed(123L)
+        repository.markSongAsPlayed(song)
 
-        // Then
-        coVerify { songDao.markAsPlayed(123L, any()) }
+        // Then: insertAll should be called with the song entity including lastPlayedAt set
+        coVerify { songDao.insertAll(match { entities -> entities.any { it.trackId == 123L && it.lastPlayedAt != null } }) }
     }
 }
