@@ -16,22 +16,32 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+import com.valter.music_ai.domain.repository.HomeRepository
+import com.valter.music_ai.domain.model.ResponseState
+import kotlinx.coroutines.flow.catch
+
 data class SongUiState(
     val song: Song? = null,
     val isPlaying: Boolean = true,
     val progressMs: Long = 0L,
-    val totalMs: Long = 234000L // fallback to ~3:54 if null
+    val totalMs: Long = 234000L, // fallback to ~3:54 if null
+    val isRepeatEnabled: Boolean = false
 )
 
 @HiltViewModel
 class SongViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    private val repository: HomeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SongUiState())
     val uiState: StateFlow<SongUiState> = _uiState.asStateFlow()
 
     private var progressJob: Job? = null
+    
+    // Playlist logic
+    private var playlist: List<Song> = emptyList()
+    private var currentIndex: Int = -1
 
     init {
         val songBase64: String? = savedStateHandle["songBase64"]
@@ -43,13 +53,62 @@ class SongViewModel @Inject constructor(
                 _uiState.update { 
                     it.copy(
                         song = song,
-                        totalMs = song.trackTimeMillis ?: 234000L
+                        totalMs = song.trackTimeMillis ?: 234000L,
+                        progressMs = 0L
                     )
                 }
                 startProgress()
+
+                // Load album playlist
+                val albumQuery = song.collectionName ?: song.artistName
+                loadPlaylist(albumQuery, song.trackId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    private fun loadPlaylist(query: String, currentTrackId: Long) {
+        viewModelScope.launch {
+            repository.searchSongs(query, limit = 50, offset = 0)
+                .catch { /* ignore */ }
+                .collect { state ->
+                    if (state is ResponseState.Success) {
+                        // Filter to keep only the actual album tracks if possible, 
+                        // but iTunes search is fuzzy so we just use the results as a playlist queue.
+                        playlist = state.data
+                        val index = playlist.indexOfFirst { it.trackId == currentTrackId }
+                        currentIndex = if (index >= 0) index else 0
+                    }
+                }
+        }
+    }
+
+    fun nextSong() {
+        if (playlist.isEmpty()) return
+        currentIndex = (currentIndex + 1) % playlist.size
+        updateToCurrentIndexSong()
+    }
+
+    fun previousSong() {
+        if (playlist.isEmpty()) return
+        currentIndex = if (currentIndex - 1 < 0) playlist.size - 1 else currentIndex - 1
+        updateToCurrentIndexSong()
+    }
+
+    private fun updateToCurrentIndexSong() {
+        val nextSong = playlist.getOrNull(currentIndex) ?: return
+        _uiState.update {
+            it.copy(
+                song = nextSong,
+                totalMs = nextSong.trackTimeMillis ?: 234000L,
+                progressMs = 0L
+            )
+        }
+        if (!_uiState.value.isPlaying) {
+            togglePlayPause() // auto-play next song
+        } else {
+            startProgress() // restart progress timer
         }
     }
 
@@ -67,12 +126,27 @@ class SongViewModel @Inject constructor(
         _uiState.update { it.copy(progressMs = progressMs) }
     }
 
+    fun toggleRepeat() {
+        _uiState.update { it.copy(isRepeatEnabled = !it.isRepeatEnabled) }
+    }
+
     private fun startProgress() {
         progressJob?.cancel()
         progressJob = viewModelScope.launch {
-            while (_uiState.value.isPlaying && _uiState.value.progressMs < _uiState.value.totalMs) {
+            while (_uiState.value.isPlaying) {
                 delay(1000)
-                _uiState.update { it.copy(progressMs = it.progressMs + 1000) }
+                val current = _uiState.value
+                val newProgress = current.progressMs + 1000
+                if (newProgress >= current.totalMs) {
+                    if (current.isRepeatEnabled) {
+                        _uiState.update { it.copy(progressMs = 0L) }
+                    } else {
+                        nextSong()
+                        break
+                    }
+                } else {
+                    _uiState.update { it.copy(progressMs = newProgress) }
+                }
             }
         }
     }

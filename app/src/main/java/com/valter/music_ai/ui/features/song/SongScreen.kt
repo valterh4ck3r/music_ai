@@ -32,6 +32,7 @@ import coil.compose.AsyncImage
 import com.valter.music_ai.ui.theme.DarkBackground
 import com.valter.music_ai.ui.theme.OnDarkTextSecondary
 import com.valter.music_ai.R
+import com.valter.music_ai.ui.features.song.components.SongOptionsBottomSheet
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -42,6 +43,9 @@ fun SongScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val song = uiState.song
+    
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
 
     // Replace iTunes small image size with high-resolution image size 
     // e.g., replacing 100x100bb.jpg with 600x600bb.jpg
@@ -84,7 +88,7 @@ fun SongScreen(
             }
 
             IconButton(
-                onClick = { /* Handle More Options */ },
+                onClick = { showSheet = true },
                 modifier = Modifier.size(24.dp)
             ) {
                 Icon(
@@ -200,7 +204,7 @@ fun SongScreen(
                 horizontalArrangement = Arrangement.spacedBy(24.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { /* Rewind */ }) {
+                IconButton(onClick = { viewModel.previousSong() }) {
                     Icon(
                         imageVector = Icons.Default.FastRewind,
                         contentDescription = "Rewind",
@@ -209,7 +213,7 @@ fun SongScreen(
                     )
                 }
                 
-                IconButton(onClick = { /* Forward */ }) {
+                IconButton(onClick = { viewModel.nextSong() }) {
                     Icon(
                         imageVector = Icons.Default.FastForward,
                         contentDescription = "Forward",
@@ -220,15 +224,24 @@ fun SongScreen(
             }
 
             // Loop/Repeat
-            IconButton(onClick = { /* Repeat */ }) {
+            IconButton(onClick = { viewModel.toggleRepeat() }) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_repeat),
                     contentDescription = "Repeat",
-                    tint = Color.White,
+                    tint = if (uiState.isRepeatEnabled) Color.White else Color.Gray,
                     modifier = Modifier.size(28.dp)
                 )
             }
         }
+    }
+
+    if (showSheet) {
+        SongOptionsBottomSheet(
+            song = song,
+            sheetState = sheetState,
+            onDismissRequest = { showSheet = false },
+            onViewAlbumClick = { /* Handle navigation if needed */ }
+        )
     }
 }
 
