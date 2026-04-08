@@ -29,7 +29,7 @@ class HomeRepositoryImpl @Inject constructor(
      * Offline-first search:
      * 1. Emit cached results immediately if available
      * 2. Fetch from network in background
-     * 4. If network fails and we had no cache, emit failure
+     * 3. If network fails and we had no cache, emit failure
      */
     override fun searchSongs(
         term: String,
@@ -39,7 +39,7 @@ class HomeRepositoryImpl @Inject constructor(
     ): Flow<ResponseState<List<Song>>> = flow {
         emit(ResponseState.Loading)
 
-        // Step 2: Fetch from network
+        // Fetch from network
         try {
             val response = apiService.searchSongs(
                 term = term,
@@ -77,11 +77,11 @@ class HomeRepositoryImpl @Inject constructor(
         // 3. Only download if we don't have it locally or the file was deleted
         val needsDownload = song.previewUrl != null && (
             updatedEntity.previewUrlLocal == null ||
-            !File(updatedEntity.previewUrlLocal!!).exists()
+            !File(updatedEntity.previewUrlLocal).exists()
         )
 
         if (needsDownload) {
-            val localPath = downloadAndSavePreview(song.trackId, song.previewUrl!!)
+            val localPath = downloadAndSavePreview(song.trackId, song.previewUrl)
             if (localPath != null) {
                 updatedEntity = updatedEntity.copy(previewUrlLocal = localPath)
             }

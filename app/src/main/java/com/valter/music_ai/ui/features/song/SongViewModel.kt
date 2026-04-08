@@ -30,7 +30,8 @@ data class SongUiState(
     val isLoading: Boolean = false,
     val progressMs: Long = 0L,
     val totalMs: Long = 0L,
-    val isRepeatEnabled: Boolean = false
+    val isRepeatEnabled: Boolean = false,
+    val error: String? = null
 )
 
 @HiltViewModel
@@ -86,6 +87,10 @@ class SongViewModel @Inject constructor(
                     }
                 }
             }
+
+            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+                _uiState.update { it.copy(error = "No Internet or Playback Error", isLoading = false) }
+            }
         })
     }
 
@@ -95,7 +100,8 @@ class SongViewModel @Inject constructor(
                 song = song,
                 progressMs = 0L,
                 totalMs = song.trackTimeMillis ?: 0L,
-                isPlaying = false
+                isPlaying = false,
+                error = null
             )
         }
         val playbackUrl = song.previewUrlLocal ?: song.previewUrl

@@ -51,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.ui.features.home.components.PullToRefreshLayout
@@ -86,6 +87,11 @@ fun HomeScreen(
     var showSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
     var selectedSongForOptions by remember { mutableStateOf<Song?>(null) }
+
+    // Load Cache Itens
+    LaunchedEffect(Unit) {
+        viewModel.loadRecentlyPlayed()
+    }
 
     // Hide search bar on pull down to refresh
     LaunchedEffect(uiState.isRefreshing) {

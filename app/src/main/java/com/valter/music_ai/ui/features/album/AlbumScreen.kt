@@ -9,11 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -173,11 +175,29 @@ fun AlbumScreen(
                 }
             }
             is ResponseState.Error -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text(
-                        text = (uiState as ResponseState.Error).message,
-                        color = Color.Red
-                    )
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    item {
+                        Spacer(modifier = Modifier.height(46.dp))
+                        Icon(
+                            imageVector = Icons.Outlined.WarningAmber,
+                            contentDescription = "Back",
+                            tint = Color.White,
+                            modifier = Modifier.width(45.dp).height(45.dp)
+                        )
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Text(
+                            text = "No Internet",
+                            color = Color.White,
+                            fontSize = 16.sp,
+                            modifier = Modifier.padding(16.dp),
+                            textAlign = TextAlign.Center
+                        )
+                    }
                 }
             }
         }
@@ -187,7 +207,7 @@ fun AlbumScreen(
         SongOptionsBottomSheet(
             song = selectedSongForOptions,
             sheetState = sheetState,
-            onDismissRequest = { showSheet = false },
+            onDismissRequest = { },
             onViewAlbumClick = {
                 // If the user selects View Album inside AlbumScreen, technically they are already on the album.
                 // But if they clicked on a song that might have a different album, it navigates appropriately.

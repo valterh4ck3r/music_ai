@@ -178,7 +178,7 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    private fun loadRecentlyPlayed() {
+    fun loadRecentlyPlayed() {
         viewModelScope.launch {
             repository.getRecentlyPlayedSongs()
                 .catch { Log.d("HomeViewModel", "Error loading recently played: ${it.message}")}
