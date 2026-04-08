@@ -119,7 +119,7 @@ fun AlbumScreen(
                             // Large Album Art
                             AsyncImage(
                                 model = highResArtwork,
-                                contentDescription = "Album Art",
+                                contentDescription = "Album art for ${data.albumTitle}",
                                 contentScale = ContentScale.Crop,
                                 modifier = Modifier
                                     .size(240.dp)
@@ -185,7 +185,7 @@ fun AlbumScreen(
                         Spacer(modifier = Modifier.height(46.dp))
                         Icon(
                             imageVector = Icons.Outlined.WarningAmber,
-                            contentDescription = "Back",
+                            contentDescription = "Warning icon",
                             tint = Color.White,
                             modifier = Modifier.width(45.dp).height(45.dp)
                         )

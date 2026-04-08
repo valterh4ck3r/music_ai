@@ -9,6 +9,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import com.google.gson.Gson
+import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
 import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
@@ -38,6 +39,7 @@ data class SongUiState(
 class SongViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: HomeRepository,
+    private val connectivityObserver: NetworkConnectivityObserver,
     @ApplicationContext context: Context
 ) : ViewModel() {
 
@@ -52,6 +54,7 @@ class SongViewModel @Inject constructor(
 
     init {
         setupPlayer()
+        observeConnection()
         val songBase64: String? = savedStateHandle["songBase64"]
         songBase64?.let { base64 ->
             try {
@@ -62,6 +65,16 @@ class SongViewModel @Inject constructor(
                 loadPlaylist(song.collectionName ?: song.artistName, song.trackId)
             } catch (e: Exception) {
                 e.printStackTrace()
+            }
+        }
+    }
+
+    private fun observeConnection() {
+        viewModelScope.launch {
+            connectivityObserver.isConnected.collect { connected ->
+                if (connected && _uiState.value.error != null) {
+                    _uiState.value.song?.let { prepareSong(it) }
+                }
             }
         }
     }

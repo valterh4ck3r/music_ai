@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -79,11 +80,15 @@ fun SongOptionsBottomSheet(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .semantics(mergeDescendants = true) {}
                     .clip(RoundedCornerShape(12.dp))
-                    .clickable { 
-                        onViewAlbumClick()
-                        onDismissRequest()
-                    }
+                    .clickable(
+                        onClickLabel = "View album for ${song?.trackName}",
+                        onClick = { 
+                            onViewAlbumClick()
+                            onDismissRequest()
+                        }
+                    )
                     .padding(vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {

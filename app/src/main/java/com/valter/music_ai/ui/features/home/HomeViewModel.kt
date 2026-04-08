@@ -51,6 +51,20 @@ class HomeViewModel @Inject constructor(
     init {
         loadRecentlyPlayed()
         searchSongs(RANDOM_TERMS.random())
+        observeConnection()
+    }
+
+    private fun observeConnection() {
+        viewModelScope.launch {
+            connectivityObserver.isConnected.collect { connected ->
+                if (connected) {
+                    // Retry search if it failed or is empty
+                    if (_uiState.value is ResponseState.Error || uiData.songs.isEmpty()) {
+                        searchSongs(uiData.searchQuery.ifBlank { RANDOM_TERMS.random() })
+                    }
+                }
+            }
+        }
     }
 
     fun onSearchQueryChanged(query: String) {

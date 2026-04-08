@@ -47,6 +47,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -166,7 +168,7 @@ fun SongScreen(
             ) {
                 AsyncImage(
                     model = highResArtwork,
-                    contentDescription = "Album Art",
+                    contentDescription = "Song artwork: ${song?.trackName}",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -206,7 +208,9 @@ fun SongScreen(
                     activeTrackColor = Color.White,
                     inactiveTrackColor = Color.DarkGray
                 ),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .semantics { contentDescription = "Song progress" }
             )
 
             // Time indicators
@@ -244,7 +248,8 @@ fun SongScreen(
                         .size(72.dp)
                         .clip(CircleShape)
                         .background(Color(0xFF333333))
-                        .clickable { viewModel.togglePlayPause() },
+                        .clickable { viewModel.togglePlayPause() }
+                        .semantics { contentDescription = if (uiState.isPlaying) "Pause song" else "Play song" },
                     contentAlignment = Alignment.Center
                 ) {
                     if (uiState.isLoading) {
@@ -256,7 +261,7 @@ fun SongScreen(
                     } else {
                         Icon(
                             imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = if (uiState.isPlaying) "Pause" else "Play",
+                            contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(36.dp)
                         )
@@ -271,7 +276,7 @@ fun SongScreen(
                     IconButton(onClick = { viewModel.previousSong() }) {
                         Icon(
                             imageVector = Icons.Default.FastRewind,
-                            contentDescription = "Rewind",
+                            contentDescription = "Previous song",
                             tint = Color.White,
                             modifier = Modifier.size(32.dp)
                         )
@@ -280,7 +285,7 @@ fun SongScreen(
                     IconButton(onClick = { viewModel.nextSong() }) {
                         Icon(
                             imageVector = Icons.Default.FastForward,
-                            contentDescription = "Forward",
+                            contentDescription = "Next song",
                             tint = Color.White,
                             modifier = Modifier.size(32.dp)
                         )
@@ -291,7 +296,7 @@ fun SongScreen(
                 IconButton(onClick = { viewModel.toggleRepeat() }) {
                     Icon(
                         imageVector = Icons.Default.Repeat,
-                        contentDescription = "Repeat",
+                        contentDescription = if (uiState.isRepeatEnabled) "Repeat enabled" else "Repeat disabled",
                         tint = if (uiState.isRepeatEnabled) Color.White else Color.Gray,
                         modifier = Modifier.size(28.dp)
                     )

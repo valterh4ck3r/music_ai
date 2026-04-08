@@ -149,7 +149,7 @@ fun HomeScreen(
                         IconButton(onClick = { isSearchVisible = true }) {
                             Icon(
                                 imageVector = Icons.Default.Search,
-                                contentDescription = "Search",
+                                contentDescription = "Open search bar",
                                 tint = Color.White
                             )
                         }
@@ -218,7 +218,7 @@ fun HomeScreen(
                                     val artworkUrl = song.albumArtUrl?.replace("100x100bb", "300x300bb")
                                     coil.compose.AsyncImage(
                                         model = artworkUrl,
-                                        contentDescription = null,
+                                        contentDescription = "Album art for ${song.title}",
                                         contentScale = androidx.compose.ui.layout.ContentScale.Crop,
                                         modifier = Modifier.fillMaxSize()
                                     )
@@ -297,7 +297,7 @@ fun HomeScreen(
                             Spacer(modifier = Modifier.height(46.dp))
                             Icon(
                                 imageVector = Icons.Outlined.WarningAmber,
-                                contentDescription = "Back",
+                                contentDescription = "Warning",
                                 tint = Color.White,
                                 modifier = Modifier.width(45.dp).height(45.dp)
                             )
