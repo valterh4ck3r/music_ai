@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.FastForward
@@ -46,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -55,7 +58,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil.compose.AsyncImage
-import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.ui.features.song.components.SongOptionsBottomSheet
 import com.valter.music_ai.ui.theme.DarkBackground
 import com.valter.music_ai.ui.theme.OnDarkTextSecondary
@@ -68,6 +70,10 @@ fun SongScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAlbum: (String) -> Unit
 ) {
+    val sizeAlbumImage =  0.35F
+
+    val scrollState = rememberScrollState()
+
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val song = uiState.song
 
@@ -91,6 +97,7 @@ fun SongScreen(
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = 24.dp)
+            .verticalScroll(scrollState)
     ) {
         // Top Bar
         Row(
@@ -160,19 +167,27 @@ fun SongScreen(
         } else {
             Spacer(modifier = Modifier.weight(1f))
 
-            // Album Art
+            // Album Art Container
             Box(
                 modifier = Modifier
-                    .aspectRatio(1f)
-                    .padding(horizontal = 32.dp, vertical = 32.dp)
-                    .clip(RoundedCornerShape(32.dp))
+                    .fillMaxSize()
+                    .padding(horizontal = 48.dp),
+                contentAlignment = Alignment.Center
             ) {
-                AsyncImage(
-                    model = highResArtwork,
-                    contentDescription = "Song artwork: ${song?.trackName}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(32.dp))
+                        .aspectRatio(1f)
+                        .height(LocalWindowInfo.current.containerDpSize.height * sizeAlbumImage)
+                        .width(LocalWindowInfo.current.containerDpSize.width * sizeAlbumImage)
+                ) {
+                    AsyncImage(
+                        model = highResArtwork,
+                        contentDescription = "Song artwork: ${song?.trackName}",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.weight(1f))

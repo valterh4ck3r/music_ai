@@ -5,3 +5,5 @@ sealed class ResponseState<out T> {
     object Loading : ResponseState<Nothing>()
     data class Error(val statusCode: Int? = null, val message: String) : ResponseState<Nothing>()
 }
+
+
