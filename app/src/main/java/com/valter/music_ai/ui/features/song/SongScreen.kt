@@ -142,8 +142,11 @@ fun SongScreen(
             }
         }
 
+        Spacer(modifier = Modifier.height(24.dp))
+
+
+
         if (uiState.error != null) {
-            Spacer(modifier = Modifier.weight(1f))
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth()
@@ -163,10 +166,8 @@ fun SongScreen(
                     textAlign = TextAlign.Center
                 )
             }
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
         } else {
-            Spacer(modifier = Modifier.weight(1f))
-
             // Album Art Container
             Box(
                 modifier = Modifier
@@ -190,7 +191,7 @@ fun SongScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
             // Song Info
             Text(
@@ -202,7 +203,7 @@ fun SongScreen(
                 overflow = TextOverflow.Ellipsis
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
             Text(
                 text = song?.artistName ?: "Unknown Artist",
