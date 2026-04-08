@@ -31,7 +31,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
 
         // Install Splash Screen
-        installSplashScreen()
+        val splashScreen = installSplashScreen()
+
+        // Remove the real splash screen
+        splashScreen.setKeepOnScreenCondition { false }
 
         // Continue with regular onCreate
         super.onCreate(savedInstanceState)
