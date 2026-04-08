@@ -112,7 +112,7 @@ class SongViewModel @Inject constructor(
             it.copy(
                 song = song,
                 progressMs = 0L,
-                totalMs = song.trackTimeMillis ?: 0L,
+                totalMs = 0L,
                 isPlaying = false,
                 error = null
             )
@@ -171,7 +171,7 @@ class SongViewModel @Inject constructor(
 
     fun seekTo(progressMs: Long) {
         player.seekTo(progressMs)
-//        _uiState.update { it.copy(progressMs = progressMs) }
+        _uiState.update { it.copy(progressMs = progressMs) }
     }
 
     fun toggleRepeat() {
