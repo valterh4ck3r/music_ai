@@ -26,6 +26,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -58,6 +59,13 @@ fun AlbumScreen(
     onNavigateToAlbum: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val isConnected by viewModel.isConnected.collectAsStateWithLifecycle(initialValue = true)
+
+    LaunchedEffect(isConnected) {
+        if (isConnected && uiState is ResponseState.Error) {
+            viewModel.refresh()
+        }
+    }
     
     // Bottom Sheet state
     var showSheet by remember { mutableStateOf(false) }

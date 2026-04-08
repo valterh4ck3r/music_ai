@@ -4,6 +4,7 @@ import android.util.Base64
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
 import com.google.gson.Gson
 import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
@@ -28,11 +29,17 @@ typealias AlbumUiState = ResponseState<AlbumUiData>
 @HiltViewModel
 class AlbumViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
-    private val repository: HomeRepository
+    private val repository: HomeRepository,
+    private val connectivityObserver: NetworkConnectivityObserver
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AlbumUiState>(ResponseState.Loading)
     val uiState: StateFlow<AlbumUiState> = _uiState.asStateFlow()
+
+    val isConnected = connectivityObserver.isConnected
+
+    private var lastQuery: String? = null
+    private var lastInitialSong: Song? = null
 
     init {
         val songBase64: String? = savedStateHandle["songBase64"]
@@ -42,6 +49,8 @@ class AlbumViewModel @Inject constructor(
                 val song = Gson().fromJson(json, Song::class.java)
                 
                 val albumQuery = song.collectionName ?: song.trackName
+                lastQuery = albumQuery
+                lastInitialSong = song
                 loadAlbum(albumQuery, song)
             } catch (e: Exception) {
                 _uiState.value = ResponseState.Error(message = "Failed to load album info")
@@ -49,7 +58,16 @@ class AlbumViewModel @Inject constructor(
         }
     }
 
+    fun refresh() {
+        val query = lastQuery
+        val song = lastInitialSong
+        if (query != null && song != null) {
+            loadAlbum(query, song)
+        }
+    }
+
     private fun loadAlbum(query: String, initialSong: Song) {
+        _uiState.value = ResponseState.Loading
         viewModelScope.launch {
             repository.searchSongs(query, limit = 50, offset = 0)
                 .collect { state ->

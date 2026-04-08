@@ -76,8 +76,6 @@ fun HomeScreen(
         }
     }
 
-    val errorMessage = (stateResponse as? ResponseState.Error)?.message
-    
     val isConnected by viewModel.isConnected.collectAsStateWithLifecycle(initialValue = true)
     val listState = rememberLazyListState()
     
