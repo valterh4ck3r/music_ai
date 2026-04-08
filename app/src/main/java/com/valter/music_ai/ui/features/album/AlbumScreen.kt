@@ -113,7 +113,7 @@ fun AlbumScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 32.dp),
+                                .padding(vertical = 24.dp),
                             horizontalAlignment = Alignment.CenterHorizontally
                         ) {
                             // Large Album Art

@@ -129,7 +129,6 @@ fun HomeScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp)
         ) {
-            item { Spacer(modifier = Modifier.height(24.dp)) }
 
             // Title and Search Icon
             item {

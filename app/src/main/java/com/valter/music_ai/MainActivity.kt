@@ -4,8 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -13,8 +17,10 @@ import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.valter.music_ai.ui.core.connectivity.ConnectivityBanner
+import com.valter.music_ai.ui.core.connectivity.ConnectivityStatus
 import com.valter.music_ai.ui.core.connectivity.ConnectivityViewModel
 import com.valter.music_ai.ui.navigation.AppNavigation
 import com.valter.music_ai.ui.theme.Music_aiTheme
@@ -50,11 +56,25 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
+                SafeScreen(connectivityStatus = connectivityStatus , navController = navController)
+            }
+        }
+    }
+}
 
-                Column(modifier = Modifier.fillMaxSize()) {
-                    ConnectivityBanner(status = connectivityStatus)
-                    AppNavigation(navController = navController)
-                }
+@Composable
+fun SafeScreen(connectivityStatus : ConnectivityStatus, navController : NavHostController ) {
+    Scaffold(
+        modifier = Modifier.fillMaxSize()
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding) // Aplica o padding seguro
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                ConnectivityBanner(status = connectivityStatus)
+                AppNavigation(navController = navController)
             }
         }
     }
