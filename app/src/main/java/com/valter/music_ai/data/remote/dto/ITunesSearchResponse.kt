@@ -12,6 +12,8 @@ data class ITunesSearchResponse(
 data class TrackDto(
     @SerializedName("trackId")
     val trackId: Long?,
+    @SerializedName("collectionId")
+    val collectionId: Long?,
     @SerializedName("trackName")
     val trackName: String?,
     @SerializedName("artistName")

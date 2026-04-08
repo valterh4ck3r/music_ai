@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class SongEntity(
     @PrimaryKey
     val trackId: Long,
+    val collectionId: Long?,
     val trackName: String,
     val artistName: String,
     val collectionName: String?,

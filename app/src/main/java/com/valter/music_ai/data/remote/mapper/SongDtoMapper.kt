@@ -9,6 +9,7 @@ object SongDtoMapper {
         val id = trackId ?: return null
         return Song(
             trackId = id,
+            collectionId = collectionId,
             trackName = trackName ?: "Unknown",
             artistName = artistName ?: "Unknown",
             collectionName = collectionName,

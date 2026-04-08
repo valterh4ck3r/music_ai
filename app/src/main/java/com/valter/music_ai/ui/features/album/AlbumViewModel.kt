@@ -69,39 +69,44 @@ class AlbumViewModel @Inject constructor(
     private fun loadAlbum(query: String, initialSong: Song) {
         _uiState.value = ResponseState.Loading
         viewModelScope.launch {
-            repository.searchSongs(query, limit = 50, offset = 0)
-                .collect { state ->
-                    when (state) {
-                        is ResponseState.Loading -> {
-                            // Keep loading
-                        }
-                        is ResponseState.Success -> {
-                            val songs = state.data.map { s ->
-                                SongUi(
-                                    id = s.trackId.toString(),
-                                    title = s.trackName,
-                                    artist = s.artistName,
-                                    albumArtUrl = s.artworkUrl100,
-                                    originalSong = s
-                                )
-                            }
-                            _uiState.value = ResponseState.Success(
-                                AlbumUiData(
-                                    albumTitle = initialSong.collectionName ?: initialSong.trackName,
-                                    artistName = initialSong.artistName,
-                                    albumArtUrl = initialSong.artworkUrl100,
-                                    songs = songs
-                                )
+            val tracksFlow = if (initialSong.collectionId != null) {
+                repository.getAlbumTracks(initialSong.collectionId)
+            } else {
+                repository.searchSongs(query, limit = 50, offset = 0)
+            }
+
+            tracksFlow.collect { state ->
+                when (state) {
+                    is ResponseState.Loading -> {
+                        // Keep loading
+                    }
+                    is ResponseState.Success -> {
+                        val songs = state.data.map { s ->
+                            SongUi(
+                                id = s.trackId.toString(),
+                                title = s.trackName,
+                                artist = s.artistName,
+                                albumArtUrl = s.artworkUrl100,
+                                originalSong = s
                             )
                         }
-                        is ResponseState.Error -> {
-                            _uiState.value = ResponseState.Error(
-                                statusCode = state.statusCode,
-                                message = state.message
+                        _uiState.value = ResponseState.Success(
+                            AlbumUiData(
+                                albumTitle = initialSong.collectionName ?: initialSong.trackName,
+                                artistName = initialSong.artistName,
+                                albumArtUrl = initialSong.artworkUrl100,
+                                songs = songs
                             )
-                        }
+                        )
+                    }
+                    is ResponseState.Error -> {
+                        _uiState.value = ResponseState.Error(
+                            statusCode = state.statusCode,
+                            message = state.message
+                        )
                     }
                 }
+            }
         }
     }
 }

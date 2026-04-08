@@ -20,6 +20,13 @@ interface ITunesApiService {
         @Query("country") country: String = "US"
     ): ITunesSearchResponse
 
+    @GET("lookup")
+    suspend fun lookupByCollectionId(
+        @Query("id") collectionId: Long,
+        @Query("entity") entity: String = "song",
+        @Query("country") country: String = "US"
+    ): ITunesSearchResponse
+
     @Streaming
     @GET
     suspend fun downloadFile(@Url url: String): Response<ResponseBody>

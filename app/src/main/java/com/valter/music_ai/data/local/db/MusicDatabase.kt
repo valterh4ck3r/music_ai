@@ -9,7 +9,7 @@ import com.valter.music_ai.data.local.entity.SongEntity
 
 @Database(
     entities = [SongEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class MusicDatabase : RoomDatabase() {

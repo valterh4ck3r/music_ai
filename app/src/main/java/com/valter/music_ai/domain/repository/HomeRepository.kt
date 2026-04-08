@@ -11,6 +11,11 @@ interface HomeRepository {
      * Returns a Flow to support offline-first: emits cached data first, then network data.
      */
     fun searchSongs(term: String, limit: Int, offset: Int, forceRemote: Boolean = false): Flow<ResponseState<List<Song>>>
+    
+    /**
+     * Get all tracks for a specific album by collectionId.
+     */
+    fun getAlbumTracks(collectionId: Long): Flow<ResponseState<List<Song>>>
 
     /**
      * Get recently played songs from local cache.

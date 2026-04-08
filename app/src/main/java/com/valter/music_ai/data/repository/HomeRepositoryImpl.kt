@@ -57,6 +57,20 @@ class HomeRepositoryImpl @Inject constructor(
         }
     }.flowOn(Dispatchers.IO)
 
+    override fun getAlbumTracks(collectionId: Long): Flow<ResponseState<List<Song>>> = flow {
+        emit(ResponseState.Loading)
+        try {
+            val response = apiService.lookupByCollectionId(collectionId)
+            // Filter out the album result, keep only songs
+            val songs = response.results.toDomainList()
+            emit(ResponseState.Success(songs))
+        } catch (e: HttpException) {
+            emit(ResponseState.Error(statusCode = e.code(), message = e.message ?: "Unknown HttpException"))
+        } catch (e: Exception) {
+            emit(ResponseState.Error(statusCode = null, message = e.message ?: "Network error"))
+        }
+    }.flowOn(Dispatchers.IO)
+
     override fun getRecentlyPlayedSongs(): Flow<List<Song>> {
         return songDao.getRecentlyPlayed().map { entities ->
             entities.toDomainList()

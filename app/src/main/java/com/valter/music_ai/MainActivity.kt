@@ -56,14 +56,14 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-                SafeScreen(connectivityStatus = connectivityStatus , navController = navController)
+                SafeArea(connectivityStatus = connectivityStatus , navController = navController)
             }
         }
     }
 }
 
 @Composable
-fun SafeScreen(connectivityStatus : ConnectivityStatus, navController : NavHostController ) {
+fun SafeArea(connectivityStatus : ConnectivityStatus, navController : NavHostController ) {
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->

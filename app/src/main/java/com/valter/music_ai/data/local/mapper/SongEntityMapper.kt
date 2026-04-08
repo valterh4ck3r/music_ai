@@ -8,6 +8,7 @@ object SongEntityMapper {
     fun SongEntity.toDomain(): Song {
         return Song(
             trackId = trackId,
+            collectionId = collectionId,
             trackName = trackName,
             artistName = artistName,
             collectionName = collectionName,
@@ -22,6 +23,7 @@ object SongEntityMapper {
     fun Song.toEntity(): SongEntity {
         return SongEntity(
             trackId = trackId,
+            collectionId = collectionId,
             trackName = trackName,
             artistName = artistName,
             collectionName = collectionName,
