@@ -144,180 +144,185 @@ fun SongScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        when (uiState.status) {
 
-
-        if (uiState.error != null) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.WarningAmber,
-                    contentDescription = "Error",
-                    tint = Color.White,
-                    modifier = Modifier.size(45.dp)
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Text(
-                    text = uiState.error ?: "Unknown Error",
-                    color = Color.White,
-                    fontSize = 16.sp,
-                    modifier = Modifier.padding(16.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-        } else {
-            // Album Art Container
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 48.dp),
-                contentAlignment = Alignment.Center
-            ) {
+            SongUiStatus.SUCCESS -> {
+                // Album Art Container
                 Box(
                     modifier = Modifier
-                        .clip(RoundedCornerShape(32.dp))
-                        .aspectRatio(1f)
-                        .height(LocalWindowInfo.current.containerDpSize.height * sizeAlbumImage)
-                        .width(LocalWindowInfo.current.containerDpSize.width * sizeAlbumImage)
-                ) {
-                    AsyncImage(
-                        model = highResArtwork,
-                        contentDescription = "Song artwork: ${song?.trackName}",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Song Info
-            Text(
-                text = song?.trackName ?: "Unknown Track",
-                color = Color.White,
-                fontSize = 32.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            Text(
-                text = song?.artistName ?: "Unknown Artist",
-                color = OnDarkTextSecondary,
-                fontSize = 16.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Progress Bar
-            Slider(
-                value = uiState.progressMs.toFloat(),
-                onValueChange = { viewModel.seekTo(it.toLong()) },
-                valueRange = 0f..(uiState.totalMs.coerceAtLeast(1L).toFloat()),
-                colors = SliderDefaults.colors(
-                    thumbColor = Color.White,
-                    activeTrackColor = Color.White,
-                    inactiveTrackColor = Color.DarkGray
-                ),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Song progress" }
-            )
-
-            // Time indicators
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(
-                    text = formatTime(uiState.progressMs),
-                    color = OnDarkTextSecondary,
-                    fontSize = 12.sp
-                )
-                Text(
-                    text = "-" + formatTime(uiState.totalMs - uiState.progressMs),
-                    color = OnDarkTextSecondary,
-                    fontSize = 12.sp
-                )
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // Controls
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 48.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // Play/Pause button
-                Box(
-                    modifier = Modifier
-                        .size(72.dp)
-                        .clip(CircleShape)
-                        .background(Color(0xFF333333))
-                        .clickable { viewModel.togglePlayPause() }
-                        .semantics { contentDescription = if (uiState.isPlaying) "Pause song" else "Play song" },
+                        .fillMaxSize()
+                        .padding(horizontal = 48.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(36.dp),
-                            color = Color.White,
-                            strokeWidth = 3.dp
-                        )
-                    } else {
-                        Icon(
-                            imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(36.dp)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(32.dp))
+                            .aspectRatio(1f)
+                            .height(LocalWindowInfo.current.containerDpSize.height * sizeAlbumImage)
+                            .width(LocalWindowInfo.current.containerDpSize.width * sizeAlbumImage)
+                    ) {
+                        AsyncImage(
+                            model = highResArtwork,
+                            contentDescription = "Song artwork: ${song?.trackName}",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
                         )
                     }
                 }
 
-                // Central Skip Controls
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Song Info
+                Text(
+                    text = song?.trackName ?: "Unknown Track",
+                    color = Color.White,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Text(
+                    text = song?.artistName ?: "Unknown Artist",
+                    color = OnDarkTextSecondary,
+                    fontSize = 16.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Progress Bar
+                Slider(
+                    value = uiState.progressMs.toFloat(),
+                    onValueChange = { viewModel.seekTo(it.toLong()) },
+                    valueRange = 0f..(uiState.totalMs.coerceAtLeast(1L).toFloat()),
+                    colors = SliderDefaults.colors(
+                        thumbColor = Color.White,
+                        activeTrackColor = Color.White,
+                        inactiveTrackColor = Color.DarkGray
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .semantics { contentDescription = "Song progress" }
+                )
+
+                // Time indicators
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
-                    IconButton(onClick = { viewModel.previousSong() }) {
-                        Icon(
-                            imageVector = Icons.Default.FastRewind,
-                            contentDescription = "Previous song",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-
-                    IconButton(onClick = { viewModel.nextSong() }) {
-                        Icon(
-                            imageVector = Icons.Default.FastForward,
-                            contentDescription = "Next song",
-                            tint = Color.White,
-                            modifier = Modifier.size(32.dp)
-                        )
-                    }
-                }
-
-                // Loop/Repeat
-                IconButton(onClick = { viewModel.toggleRepeat() }) {
-                    Icon(
-                        imageVector = Icons.Default.Repeat,
-                        contentDescription = if (uiState.isRepeatEnabled) "Repeat enabled" else "Repeat disabled",
-                        tint = if (uiState.isRepeatEnabled) Color.White else Color.Gray,
-                        modifier = Modifier.size(28.dp)
+                    Text(
+                        text = formatTime(uiState.progressMs),
+                        color = OnDarkTextSecondary,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "-" + formatTime(uiState.totalMs - uiState.progressMs),
+                        color = OnDarkTextSecondary,
+                        fontSize = 12.sp
                     )
                 }
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                // Controls
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 48.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Play/Pause button
+                    Box(
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF333333))
+                            .clickable { viewModel.togglePlayPause() }
+                            .semantics {
+                                contentDescription =
+                                    if (uiState.isPlaying) "Pause song" else "Play song"
+                            },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (uiState.isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(36.dp),
+                                color = Color.White,
+                                strokeWidth = 3.dp
+                            )
+                        } else {
+                            Icon(
+                                imageVector = if (uiState.isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(36.dp)
+                            )
+                        }
+                    }
+
+                    // Central Skip Controls
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(24.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(onClick = { viewModel.previousSong() }) {
+                            Icon(
+                                imageVector = Icons.Default.FastRewind,
+                                contentDescription = "Previous song",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+
+                        IconButton(onClick = { viewModel.nextSong() }) {
+                            Icon(
+                                imageVector = Icons.Default.FastForward,
+                                contentDescription = "Next song",
+                                tint = Color.White,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
+                    }
+
+                    // Loop/Repeat
+                    IconButton(onClick = { viewModel.toggleRepeat() }) {
+                        Icon(
+                            imageVector = Icons.Default.Repeat,
+                            contentDescription = if (uiState.isRepeatEnabled) "Repeat enabled" else "Repeat disabled",
+                            tint = if (uiState.isRepeatEnabled) Color.White else Color.Gray,
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+            SongUiStatus.ERROR -> {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.WarningAmber,
+                        contentDescription = "Error",
+                        tint = Color.White,
+                        modifier = Modifier.size(45.dp)
+                    )
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Text(
+                        text = "No Internet or Playback Error",
+                        color = Color.White,
+                        fontSize = 16.sp,
+                        modifier = Modifier.padding(16.dp),
+                        textAlign = TextAlign.Center
+                    )
+                }
+                Spacer(modifier = Modifier.height(24.dp))
             }
         }
     }

@@ -25,6 +25,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+enum class SongUiStatus { SUCCESS, ERROR }
+
 data class SongUiState(
     val song: Song? = null,
     val isPlaying: Boolean = false,
@@ -32,7 +34,7 @@ data class SongUiState(
     val progressMs: Long = 0L,
     val totalMs: Long = 0L,
     val isRepeatEnabled: Boolean = false,
-    val error: String? = null
+    val status: SongUiStatus = SongUiStatus.SUCCESS
 )
 
 @HiltViewModel
@@ -72,7 +74,7 @@ class SongViewModel @Inject constructor(
     private fun observeConnection() {
         viewModelScope.launch {
             connectivityObserver.isConnected.collect { connected ->
-                if (connected && _uiState.value.error != null) {
+                if (connected && _uiState.value.status == SongUiStatus.ERROR) {
                     _uiState.value.song?.let { prepareSong(it) }
                 }
             }
@@ -102,7 +104,7 @@ class SongViewModel @Inject constructor(
             }
 
             override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                _uiState.update { it.copy(error = "No Internet or Playback Error", isLoading = false) }
+                _uiState.update { it.copy(status = SongUiStatus.ERROR, isLoading = false) }
             }
         })
     }
@@ -114,7 +116,7 @@ class SongViewModel @Inject constructor(
                 progressMs = 0L,
                 totalMs = 0L,
                 isPlaying = false,
-                error = null
+                status = SongUiStatus.SUCCESS
             )
         }
         val playbackUrl = song.previewUrlLocal ?: song.previewUrl
