@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
 import java.io.File
@@ -54,12 +55,12 @@ class HomeRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             emit(ResponseState.Error(statusCode = null, message = e.message ?: "Network error"))
         }
-    }
+    }.flowOn(Dispatchers.IO)
 
     override fun getRecentlyPlayedSongs(): Flow<List<Song>> {
         return songDao.getRecentlyPlayed().map { entities ->
             entities.toDomainList()
-        }
+        }.flowOn(Dispatchers.IO)
     }
 
     override suspend fun markSongAsPlayed(song: Song) {

@@ -35,7 +35,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -44,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Alignment.Companion
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -69,7 +69,7 @@ fun HomeScreen(
     onNavigateToSong: (String) -> Unit,
     onNavigateToAlbum: (String) -> Unit
 ) {
-    val stateResponse by viewModel.uiState.collectAsState()
+    val stateResponse by viewModel.uiState.collectAsStateWithLifecycle()
     val uiState by remember(stateResponse) {
         derivedStateOf {
             (stateResponse as? ResponseState.Success)?.data ?: viewModel.getUiData()
@@ -78,7 +78,7 @@ fun HomeScreen(
 
     val errorMessage = (stateResponse as? ResponseState.Error)?.message
     
-    val isConnected by viewModel.isConnected.collectAsState(initial = true)
+    val isConnected by viewModel.isConnected.collectAsStateWithLifecycle(initialValue = true)
     val listState = rememberLazyListState()
     
     var isSearchVisible by remember { mutableStateOf(false) }
