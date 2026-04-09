@@ -1,5 +1,10 @@
 package com.valter.music_ai.ui.features.song
 
+import android.Manifest
+import android.content.ComponentName
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -39,6 +44,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -56,8 +63,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
 import coil.compose.AsyncImage
+import com.google.common.util.concurrent.MoreExecutors
+import com.valter.music_ai.playback.MusicPlayerService
 import com.valter.music_ai.ui.features.song.components.SongOptionsBottomSheet
 import com.valter.music_ai.ui.theme.DarkBackground
 import com.valter.music_ai.ui.theme.OnDarkTextSecondary
@@ -70,25 +84,58 @@ fun SongScreen(
     onNavigateBack: () -> Unit,
     onNavigateToAlbum: (String) -> Unit
 ) {
-    val sizeAlbumImage =  0.35F
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    
+    // Request notification permission for Android 13+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { _ -> }
 
+    LaunchedEffect(Unit) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
+
+    // MediaController management
+    DisposableEffect(lifecycleOwner) {
+        val sessionToken = SessionToken(context, ComponentName(context, MusicPlayerService::class.java))
+        val controllerFuture = MediaController.Builder(context, sessionToken).buildAsync()
+        
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_START) {
+                controllerFuture.addListener({
+                    try {
+                        viewModel.setPlayer(controllerFuture.get())
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }, MoreExecutors.directExecutor())
+            } else if (event == Lifecycle.Event.ON_STOP) {
+                viewModel.setPlayer(null)
+                MediaController.releaseFuture(controllerFuture)
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+            viewModel.setPlayer(null)
+            MediaController.releaseFuture(controllerFuture)
+        }
+    }
+
+    val sizeAlbumImage = 0.35F
     val scrollState = rememberScrollState()
-
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val song = uiState.song
 
     var showSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
-    // Replace iTunes small image size with high-resolution image size
-    // e.g., replacing 100x100bb.jpg with 600x600bb.jpg
     val highResArtwork = song?.artworkUrl100?.replace("100x100bb", "600x600bb")
-
-    DisposableEffect(Unit) {
-        onDispose {
-            viewModel.pause()
-        }
-    }
 
     Column(
         modifier = Modifier
@@ -109,10 +156,7 @@ fun SongScreen(
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
-                    onClick = {
-                        viewModel.pause()
-                        onNavigateBack()
-                    },
+                    onClick = onNavigateBack,
                     modifier = Modifier.size(24.dp)
                 ) {
                     Icon(
@@ -145,12 +189,11 @@ fun SongScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         when (uiState.status) {
-
             SongUiStatus.SUCCESS -> {
                 // Album Art Container
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
+                        .fillMaxWidth()
                         .padding(horizontal = 48.dp),
                     contentAlignment = Alignment.Center
                 ) {
@@ -331,7 +374,7 @@ fun SongScreen(
         SongOptionsBottomSheet(
             song = song,
             sheetState = sheetState,
-            onDismissRequest = { },
+            onDismissRequest = { showSheet = false },
             onViewAlbumClick = {
                 song?.let { s ->
                     val json = com.google.gson.Gson().toJson(s)

@@ -1,20 +1,18 @@
 package com.valter.music_ai.ui.features.song
 
-import android.content.Context
 import android.util.Base64
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
 import com.google.gson.Gson
 import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
 import com.valter.music_ai.domain.model.ResponseState
 import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,12 +39,10 @@ data class SongUiState(
 class SongViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val repository: HomeRepository,
-    private val connectivityObserver: NetworkConnectivityObserver,
-    @ApplicationContext context: Context
+    private val connectivityObserver: NetworkConnectivityObserver
 ) : ViewModel() {
 
-    private val player = ExoPlayer.Builder(context).build()
-
+    private var player: Player? = null
     private val _uiState = MutableStateFlow(SongUiState())
     val uiState: StateFlow<SongUiState> = _uiState.asStateFlow()
 
@@ -54,20 +50,91 @@ class SongViewModel @Inject constructor(
     private var playlist: List<Song> = emptyList()
     private var currentIndex: Int = -1
 
+    private val playerListener = object : Player.Listener {
+        override fun onIsPlayingChanged(isPlaying: Boolean) {
+            _uiState.update { it.copy(isPlaying = isPlaying) }
+            if (isPlaying) startProgressUpdater() else stopProgressUpdater()
+        }
+
+        override fun onPlaybackStateChanged(state: Int) {
+            _uiState.update { it.copy(isLoading = state == Player.STATE_BUFFERING) }
+            if (state == Player.STATE_READY) {
+                _uiState.update { it.copy(totalMs = player?.duration ?: 0L) }
+            }
+            if (state == Player.STATE_ENDED) {
+                if (_uiState.value.isRepeatEnabled) {
+                    player?.seekTo(0)
+                    player?.play()
+                } else {
+                    nextSong()
+                }
+            }
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            mediaItem?.let { item ->
+                val song = playlist.find { it.trackId.toString() == item.mediaId }
+                if (song != null) {
+                    _uiState.update { it.copy(song = song) }
+                    markAsPlayed(song)
+                }
+            }
+        }
+
+        override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
+            _uiState.update { it.copy(status = SongUiStatus.ERROR, isLoading = false) }
+        }
+    }
+
     init {
-        setupPlayer()
         observeConnection()
         val songBase64: String? = savedStateHandle["songBase64"]
         songBase64?.let { base64 ->
             try {
                 val json = String(Base64.decode(base64, Base64.URL_SAFE or Base64.NO_WRAP))
                 val song = Gson().fromJson(json, Song::class.java)
-                prepareSong(song)
-                markAsPlayed(song)
+                _uiState.update { it.copy(song = song) }
                 loadPlaylist(song.collectionName ?: song.artistName, song.trackId)
             } catch (e: Exception) {
                 e.printStackTrace()
             }
+        }
+    }
+
+    fun setPlayer(player: Player?) {
+        this.player?.removeListener(playerListener)
+        this.player = player
+        this.player?.addListener(playerListener)
+        
+        // Sync initial state
+        player?.let { p ->
+            _uiState.update {
+                it.copy(
+                    isPlaying = p.isPlaying,
+                    isLoading = p.playbackState == Player.STATE_BUFFERING,
+                    totalMs = p.duration.coerceAtLeast(0L),
+                    progressMs = p.currentPosition.coerceAtLeast(0L)
+                )
+            }
+            if (p.isPlaying) startProgressUpdater()
+            
+            // If already playing a different song than what we expect, or if we need to start playing
+            checkAndPlayInitialSong()
+        }
+    }
+
+    private fun checkAndPlayInitialSong() {
+        val currentPlayer = player ?: return
+        val currentSong = _uiState.value.song ?: return
+        
+        // Check if the player is already playing this song
+        val currentMediaId = currentPlayer.currentMediaItem?.mediaId
+        if (currentMediaId != currentSong.trackId.toString()) {
+            prepareSong(currentSong)
+            markAsPlayed(currentSong)
+        } else {
+             // Already playing the correct song, just sync the UI
+             _uiState.update { it.copy(song = currentSong) }
         }
     }
 
@@ -79,34 +146,6 @@ class SongViewModel @Inject constructor(
                 }
             }
         }
-    }
-
-    private fun setupPlayer() {
-        player.addListener(object : Player.Listener {
-            override fun onIsPlayingChanged(isPlaying: Boolean) {
-                _uiState.update { it.copy(isPlaying = isPlaying) }
-                if (isPlaying) startProgressUpdater() else stopProgressUpdater()
-            }
-
-            override fun onPlaybackStateChanged(state: Int) {
-                _uiState.update { it.copy(isLoading = state == Player.STATE_BUFFERING) }
-                if (state == Player.STATE_READY) {
-                    _uiState.update { it.copy(totalMs = player.duration) }
-                }
-                if (state == Player.STATE_ENDED) {
-                    if (_uiState.value.isRepeatEnabled) {
-                        player.seekTo(0)
-                        player.play()
-                    } else {
-                        nextSong()
-                    }
-                }
-            }
-
-            override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-                _uiState.update { it.copy(status = SongUiStatus.ERROR, isLoading = false) }
-            }
-        })
     }
 
     private fun prepareSong(song: Song) {
@@ -121,10 +160,22 @@ class SongViewModel @Inject constructor(
         }
         val playbackUrl = song.previewUrlLocal ?: song.previewUrl
         playbackUrl?.let { url ->
-            val mediaItem = MediaItem.fromUri(url)
-            player.setMediaItem(mediaItem)
-            player.prepare()
-            player.play()
+            val metadata = MediaMetadata.Builder()
+                .setTitle(song.trackName)
+                .setArtist(song.artistName)
+                .setArtworkUri(android.net.Uri.parse(song.artworkUrl100))
+                .setAlbumTitle(song.collectionName)
+                .build()
+
+            val mediaItem = MediaItem.Builder()
+                .setMediaId(song.trackId.toString())
+                .setUri(url)
+                .setMediaMetadata(metadata)
+                .build()
+            
+            player?.setMediaItem(mediaItem)
+            player?.prepare()
+            player?.play()
         }
     }
 
@@ -142,11 +193,13 @@ class SongViewModel @Inject constructor(
     }
 
     fun togglePlayPause() {
-        if (player.isPlaying) player.pause() else player.play()
+        player?.let {
+            if (it.isPlaying) it.pause() else it.play()
+        }
     }
 
     fun pause() {
-        player.pause()
+        player?.pause()
     }
 
     fun nextSong() {
@@ -172,7 +225,7 @@ class SongViewModel @Inject constructor(
     }
 
     fun seekTo(progressMs: Long) {
-        player.seekTo(progressMs)
+        player?.seekTo(progressMs)
         _uiState.update { it.copy(progressMs = progressMs) }
     }
 
@@ -184,7 +237,7 @@ class SongViewModel @Inject constructor(
         progressJob?.cancel()
         progressJob = viewModelScope.launch {
             while (true) {
-                _uiState.update { it.copy(progressMs = player.currentPosition) }
+                _uiState.update { it.copy(progressMs = player?.currentPosition ?: 0L) }
                 delay(500)
             }
         }
@@ -196,6 +249,7 @@ class SongViewModel @Inject constructor(
 
     override fun onCleared() {
         super.onCleared()
-        player.release()
+        player?.removeListener(playerListener)
+        player = null
     }
 }
