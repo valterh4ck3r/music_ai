@@ -1,8 +1,8 @@
 package com.valter.music_ai.ui.features.home
 
+import com.valter.music_ai.MockData
 import com.valter.music_ai.data.connectivity.NetworkConnectivityObserver
 import com.valter.music_ai.domain.model.ResponseState
-import com.valter.music_ai.domain.model.Song
 import com.valter.music_ai.domain.repository.HomeRepository
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -23,6 +23,9 @@ import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
+/**
+ * Unit tests for HomeViewModel
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class HomeViewModelTest {
 
@@ -30,35 +33,20 @@ class HomeViewModelTest {
     private lateinit var viewModel: HomeViewModel
     private val testDispatcher = StandardTestDispatcher()
 
-    private val testSongs = listOf(
-        Song(
-            trackId = 1L,
-            trackName = "Purple Rain",
-            artistName = "Prince",
-            collectionName = "Purple Rain",
-            artworkUrl100 = "https://example.com/art.jpg",
-            previewUrl = null,
-            trackTimeMillis = 300000
-        ),
-        Song(
-            trackId = 2L,
-            trackName = "Get Lucky",
-            artistName = "Daft Punk",
-            collectionName = "Random Access Memories",
-            artworkUrl100 = null,
-            previewUrl = null,
-            trackTimeMillis = 250000
-        )
-    )
+    private val testSongs = MockData.testSongs
 
     private lateinit var observer: NetworkConnectivityObserver
 
     @Before
     fun setup() {
+        // Set up the main dispatcher for testing coroutines
         Dispatchers.setMain(testDispatcher)
+        
+        // Mock dependencies
         repository = mockk(relaxed = true)
         observer = mockk(relaxed = true)
 
+        // Default mock behaviors
         coEvery {
             repository.searchSongs(any(), any(), any(), any())
         } returns flowOf(ResponseState.Success(testSongs))
@@ -74,58 +62,66 @@ class HomeViewModelTest {
 
     @After
     fun tearDown() {
+        // Reset the main dispatcher
         Dispatchers.resetMain()
     }
 
+    /**
+     * Helper to create the ViewModel with mocked dependencies
+     */
     private fun createViewModel(): HomeViewModel {
         return HomeViewModel(repository, observer)
     }
 
+    /**
+     * Test that the initial state loads songs successfully using a random default term
+     */
     @Test
     fun `initial state loads songs with default search term`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertFalse(state is ResponseState.Loading)
+        assertFalse("State should not be loading", state is ResponseState.Loading)
+        
         val data = (state as ResponseState.Success).data
-        assertEquals(2, data.songs.size)
-        assertEquals("Purple Rain", data.songs[0].title)
+        assertEquals("Should load 2 songs", 2, data.songs.size)
+        assertEquals("First song title should match", "Song 1", data.songs[0].title)
     }
 
+    /**
+     * Test that when the search query changes, it updates the state and triggers a debounced search
+     */
     @Test
     fun `onSearchQueryChanged updates query and triggers search with debounce`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
+        // Update search query
         viewModel.onSearchQueryChanged("Prince")
         val data = (viewModel.uiState.value as ResponseState.Success).data
-        assertEquals("Prince", data.searchQuery)
+        assertEquals("Search query should be updated in UI state", "Prince", data.searchQuery)
 
-        // Before debounce — still shows old data
-        advanceTimeBy(200)
-
-        // After debounce
+        // Advance time but stay within debounce window (800ms)
         advanceTimeBy(400)
+        coVerify(exactly = 1) { repository.searchSongs(any(), any(), any(), any()) } // Initial search only
+
+        // Advance time past debounce window
+        advanceTimeBy(500)
         advanceUntilIdle()
 
+        // Verify that the repository was called with the new query
         coVerify { repository.searchSongs("Prince", 200, 0, any()) }
     }
 
+    /**
+     * Test pagination: verify that loadNextPage fetches and appends more songs
+     */
     @Test
     fun `loadNextPage increments offset and appends songs`() = runTest {
-        // Initial load needs > 20 songs so canLoadMore = true internally
-        val initialSongs = (1L..21L).map { i ->
-            Song(
-                trackId = i,
-                trackName = "Song $i",
-                artistName = "Artist $i",
-                collectionName = null,
-                artworkUrl100 = null,
-                previewUrl = null,
-                trackTimeMillis = null
-            )
-        }
+        // Mock a large list of songs to test pagination
+        val initialSongs = (1L..25L).map { i -> MockData.createSong(i) }
+        
         coEvery {
             repository.searchSongs(any(), any(), any(), any())
         } returns flowOf(ResponseState.Success(initialSongs))
@@ -134,35 +130,47 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         val data = (viewModel.uiState.value as ResponseState.Success).data
-        assertEquals(20, data.songs.size)
-        assertTrue(data.canLoadMore)
+        // Page size is 20, so first load should show 20
+        assertEquals("Initial load should show 20 songs", 20, data.songs.size)
+        assertTrue("Should be able to load more", data.canLoadMore)
 
+        // Trigger next page load
         viewModel.loadNextPage()
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
         val updatedData = (state as ResponseState.Success).data
-        // Should have original 20 + 1 new
-        assertEquals(21, updatedData.songs.size)
-        assertFalse(updatedData.isLoadingMore)
-        assertFalse(updatedData.canLoadMore)
+        // Should have 20 (original) + 5 (remaining) = 25
+        assertEquals("Total songs should be 25 after pagination", 25, updatedData.songs.size)
+        assertFalse("Should not be loading more", updatedData.isLoadingMore)
+        assertFalse("Should not be able to load more songs", updatedData.canLoadMore)
     }
 
+    /**
+     * Test that clicking a song marks it as played in the repository
+     */
     @Test
     fun `onSongClick marks song as played`() = runTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
         val data = (viewModel.uiState.value as ResponseState.Success).data
-        val song = data.songs.first()
-        viewModel.onSongClick(song)
+        val songUi = data.songs.first()
+        
+        // Click the song
+        viewModel.onSongClick(songUi)
         advanceUntilIdle()
 
-        coVerify { repository.markSongAsPlayed(1L) }
+        // Verify repository call with the original domain song
+        coVerify { repository.markSongAsPlayed(songUi.originalSong) }
     }
 
+    /**
+     * Test that search failures update the UI state to Error
+     */
     @Test
     fun `error state is set when search fails`() = runTest {
+        // Mock a failure response
         coEvery {
             repository.searchSongs(any(), any(), any(), any())
         } returns flowOf(ResponseState.Error(message = "Network error"))
@@ -171,10 +179,13 @@ class HomeViewModelTest {
         advanceUntilIdle()
 
         val state = viewModel.uiState.value
-        assertTrue(state is ResponseState.Error)
-        assertEquals("Network error", (state as ResponseState.Error).message)
+        assertTrue("State should be Error", state is ResponseState.Error)
+        assertEquals("Error message should match", "Network error", (state as ResponseState.Error).message)
     }
 
+    /**
+     * Test that clearError resets the UI state back to Success with previous data
+     */
     @Test
     fun `clearError removes error from state`() = runTest {
         coEvery {
@@ -184,33 +195,27 @@ class HomeViewModelTest {
         viewModel = createViewModel()
         advanceUntilIdle()
 
-        assertTrue(viewModel.uiState.value is ResponseState.Error)
+        assertTrue("Should initially be in Error state", viewModel.uiState.value is ResponseState.Error)
 
+        // Clear the error
         viewModel.clearError()
-        assertTrue(viewModel.uiState.value is ResponseState.Success)
+        assertTrue("State should be Success after clearing error", viewModel.uiState.value is ResponseState.Success)
     }
 
+    /**
+     * Test that recently played songs are correctly loaded and displayed on initialization
+     */
     @Test
     fun `recently played songs are loaded on init`() = runTest {
-        val recentSongs = listOf(
-            Song(
-                trackId = 99L,
-                trackName = "Recent Song",
-                artistName = "Recent Artist",
-                collectionName = null,
-                artworkUrl100 = null,
-                previewUrl = null,
-                trackTimeMillis = null,
-                lastPlayedAt = System.currentTimeMillis()
-            )
-        )
+        val recentSongs = listOf(MockData.createSong(99L).copy(lastPlayedAt = 123456789L))
         coEvery { repository.getRecentlyPlayedSongs() } returns flowOf(recentSongs)
 
         viewModel = createViewModel()
         advanceUntilIdle()
 
         val data = (viewModel.uiState.value as ResponseState.Success).data
-        assertEquals(1, data.recentlyPlayed.size)
-        assertEquals("Recent Song", data.recentlyPlayed[0].title)
+        assertEquals("Recently played list should have 1 item", 1, data.recentlyPlayed.size)
+        assertEquals("Recently played song title should match", "Song 99", data.recentlyPlayed[0].title)
     }
 }
+
