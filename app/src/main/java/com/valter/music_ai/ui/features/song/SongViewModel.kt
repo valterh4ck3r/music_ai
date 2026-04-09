@@ -23,16 +23,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class SongUiStatus { SUCCESS, ERROR }
+enum class SongUiStatus { LOADING, PLAYING, SUCCESS, ERROR }
 
 data class SongUiState(
     val song: Song? = null,
-    val isPlaying: Boolean = false,
-    val isLoading: Boolean = false,
     val progressMs: Long = 0L,
     val totalMs: Long = 0L,
     val isRepeatEnabled: Boolean = false,
-    val status: SongUiStatus = SongUiStatus.SUCCESS
+    val status: SongUiStatus = SongUiStatus.LOADING
 )
 
 @HiltViewModel
@@ -52,12 +50,12 @@ class SongViewModel @Inject constructor(
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            _uiState.update { it.copy(isPlaying = isPlaying) }
+            updateStatus(isPlaying, player?.playbackState ?: Player.STATE_IDLE)
             if (isPlaying) startProgressUpdater() else stopProgressUpdater()
         }
 
         override fun onPlaybackStateChanged(state: Int) {
-            _uiState.update { it.copy(isLoading = state == Player.STATE_BUFFERING) }
+            updateStatus(player?.isPlaying ?: false, state)
             if (state == Player.STATE_READY) {
                 _uiState.update { it.copy(totalMs = player?.duration ?: 0L) }
             }
@@ -82,7 +80,7 @@ class SongViewModel @Inject constructor(
         }
 
         override fun onPlayerError(error: androidx.media3.common.PlaybackException) {
-            _uiState.update { it.copy(status = SongUiStatus.ERROR, isLoading = false) }
+            _uiState.update { it.copy(status = SongUiStatus.ERROR) }
         }
     }
 
@@ -110,30 +108,36 @@ class SongViewModel @Inject constructor(
         player?.let { p ->
             _uiState.update {
                 it.copy(
-                    isPlaying = p.isPlaying,
-                    isLoading = p.playbackState == Player.STATE_BUFFERING,
                     totalMs = p.duration.coerceAtLeast(0L),
                     progressMs = p.currentPosition.coerceAtLeast(0L)
                 )
             }
+            updateStatus(p.isPlaying, p.playbackState)
             if (p.isPlaying) startProgressUpdater()
             
-            // If already playing a different song than what we expect, or if we need to start playing
             checkAndPlayInitialSong()
         }
+    }
+
+    private fun updateStatus(isPlaying: Boolean, playbackState: Int) {
+        val newStatus = when {
+            playbackState == Player.STATE_BUFFERING -> SongUiStatus.LOADING
+            isPlaying -> SongUiStatus.PLAYING
+            playbackState == Player.STATE_READY || playbackState == Player.STATE_ENDED -> SongUiStatus.SUCCESS
+            else -> SongUiStatus.LOADING
+        }
+        _uiState.update { it.copy(status = newStatus) }
     }
 
     private fun checkAndPlayInitialSong() {
         val currentPlayer = player ?: return
         val currentSong = _uiState.value.song ?: return
         
-        // Check if the player is already playing this song
         val currentMediaId = currentPlayer.currentMediaItem?.mediaId
         if (currentMediaId != currentSong.trackId.toString()) {
             prepareSong(currentSong)
             markAsPlayed(currentSong)
         } else {
-             // Already playing the correct song, just sync the UI
              _uiState.update { it.copy(song = currentSong) }
         }
     }
@@ -154,8 +158,7 @@ class SongViewModel @Inject constructor(
                 song = song,
                 progressMs = 0L,
                 totalMs = 0L,
-                isPlaying = false,
-                status = SongUiStatus.SUCCESS
+                status = SongUiStatus.LOADING
             )
         }
         val playbackUrl = song.previewUrlLocal ?: song.previewUrl
