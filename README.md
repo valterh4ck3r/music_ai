@@ -8,9 +8,9 @@ Explore the application's interface and functionality across different form fact
 
 ### **Demo Videos**
 
-| Mobile Device | Tablet Device |
-| :---: | :---: |
-| ![Phone Demo](assets/videos/screen_recording_phone.webm) | ![Tablet Demo](assets/videos/screen_recording_tablet.webm) |
+|                      Mobile Device                      |                       Tablet Device                       |
+|:-------------------------------------------------------:|:---------------------------------------------------------:|
+| ![Phone Demo](assets/videos/screen_recording_phone.mp4) | ![Tablet Demo](assets/videos/screen_recording_tablet.mp4) |
 
 ### **Screenshots & Verification**
 
