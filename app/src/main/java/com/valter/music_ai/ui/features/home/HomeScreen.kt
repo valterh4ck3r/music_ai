@@ -324,13 +324,14 @@ fun HomeScreen(
         SongOptionsBottomSheet(
             song = selectedSongForOptions,
             sheetState = sheetState,
-            onDismissRequest = { },
+            onDismissRequest = { showSheet = false },
             onViewAlbumClick = {
                 selectedSongForOptions?.let { s ->
                     val json = com.google.gson.Gson().toJson(s)
                     val base64 = android.util.Base64.encodeToString(json.toByteArray(), android.util.Base64.URL_SAFE or android.util.Base64.NO_WRAP)
                     onNavigateToAlbum(base64)
                 }
+                showSheet = false
             }
         )
     }
